@@ -1,0 +1,44 @@
+{
+  "name": "casual-game-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Authentication system for a casual game portal",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "concurrently -k -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "nodemon server/index.js",
+    "dev:web": "vite",
+    "build": "vite build",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-mongo": "^6.0.0",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
+    "google-auth-library": "^11.3.1",
+    "lucide-react": "^1.61.0",
+    "mongoose": "^9.11.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^10.0.6",
+    "nodemon": "^3.1.14",
+    "vite": "^8.3.5"
+  },
+  "overrides": {
+    "nodemon": {
+      "chokidar": "^4.0.3"
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
