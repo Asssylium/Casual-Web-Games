@@ -35,6 +35,12 @@ The checked-out `.env` file uses the requested local development values and is e
 
 Run `npm run build` to compile the React app into `dist/`, then start the API and static frontend with `npm start`. Set `NODE_ENV=production`, `MONGO_URI`, and a strong `SESSION_SECRET` in the deployment environment. Terminate TLS at a trusted reverse proxy so secure session cookies can be used.
 
+### Vercel
+
+Keep the Vercel project root set to the repository root, not `client/`. The root `vercel.json` builds `client/` into `dist/` and rewrites `/api/*` to the Node function at `api/index.js`. Configure `MONGO_URI`, `SESSION_SECRET` (at least 32 random characters), and `GOOGLE_CLIENT_ID` in Vercel's Production environment, then redeploy. Do not set `PORT` to a database or server URL; Vercel manages function ports. Add the deployed site origin to the Google OAuth client's authorized JavaScript origins.
+
+Vercel Functions do not provide the persistent Socket.IO server required for live Memory Pass rooms. The authentication API can run on Vercel, but multiplayer needs a separately hosted, long-running Node service and a matching Socket.IO client URL.
+
 ## Authentication API
 
 All endpoints are prefixed with `/api/auth` and expect JSON request bodies:
