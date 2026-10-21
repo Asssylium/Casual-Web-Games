@@ -11,5 +11,5 @@
       "source": "/api/:path*",
       "destination": "/api/index?route=:path*"
     }
-  }
+  ]
 }
