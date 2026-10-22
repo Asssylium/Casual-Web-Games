@@ -255,17 +255,6 @@ export default function MemoryGame({ onBack, user }) {
     ablyRef.current = client;
     const stateChannel = client.channels.get(`memory:${room.code}:state`);
     const privateHandChannel = client.channels.get(`memory:${room.code}:player:${user.id}`);
-
-    const subscribeToRoom = stateChannel.subscribe("game:state", (message) => {
-      if (active) setRoom(message.data);
-    });
-    const subscribeToHand = privateHandChannel.subscribe("game:hand", (message) => {
-      if (!active) return;
-      setHand(message.data.cards || []);
-      setBlockedCardId(message.data.blockedCardId || null);
-      setSelectedCardId("");
-      setPassDirection("");
-    });
     const connectionListener = (change) => {
       if (!active) return;
       const isConnected = change.current === "connected";
@@ -281,11 +270,21 @@ export default function MemoryGame({ onBack, user }) {
       }
     };
     client.connection.on(connectionListener);
-    void Promise.all([subscribeToRoom, subscribeToHand])
-      .then(() => client.connect())
-      .catch((connectionError) => {
-        if (active) setError(connectionError.message || "Could not connect to the game");
-      });
+    client.connect();
+
+    const subscribeToRoom = stateChannel.subscribe("game:state", (message) => {
+      if (active) setRoom(message.data);
+    });
+    const subscribeToHand = privateHandChannel.subscribe("game:hand", (message) => {
+      if (!active) return;
+      setHand(message.data.cards || []);
+      setBlockedCardId(message.data.blockedCardId || null);
+      setSelectedCardId("");
+      setPassDirection("");
+    });
+    void Promise.all([subscribeToRoom, subscribeToHand]).catch((connectionError) => {
+      if (active) setError(connectionError.message || "Could not connect to the game");
+    });
 
     return () => {
       active = false;
