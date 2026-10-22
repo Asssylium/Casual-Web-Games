@@ -162,9 +162,10 @@ function AuthCard({ onAuthenticated }) {
           },
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: "outline",
+          theme: "filled_blue",
           size: "large",
           shape: "rectangular",
+          logo_alignment: "left",
           width: Math.min(googleButtonRef.current.clientWidth, 400),
           text: "continue_with",
         });

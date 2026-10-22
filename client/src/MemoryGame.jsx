@@ -180,7 +180,6 @@ export default function MemoryGame({ onBack, user }) {
   const [room, setRoom] = useState(null);
   const [hand, setHand] = useState([]);
   const [blockedCardId, setBlockedCardId] = useState(null);
-  const [objects, setObjects] = useState([]);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [selectedCardId, setSelectedCardId] = useState("");
   const [passDirection, setPassDirection] = useState("");
@@ -194,7 +193,6 @@ export default function MemoryGame({ onBack, user }) {
     setRoom(result.room || null);
     setHand(result.hand?.cards || []);
     setBlockedCardId(result.hand?.blockedCardId || null);
-    setObjects(result.objects || []);
   }
 
   async function loadGameState() {
@@ -524,7 +522,7 @@ export default function MemoryGame({ onBack, user }) {
                       </div>
                       <span className="hand-count">
                         {hand.length} cards
-                        {blockedCardId && ` · ${hand.length - 1} passable`}
+                        {blockedCardId && hand.length > 1 && ` · ${hand.length - 1} passable`}
                       </span>
                     </div>
 
@@ -557,7 +555,7 @@ export default function MemoryGame({ onBack, user }) {
                             <ObjectCard
                               card={card}
                               key={card.id}
-                              locked={card.id === blockedCardId}
+                              locked={card.id === blockedCardId && hand.length > 1}
                               onClick={() => selectCard(card)}
                               selected={selectedCardId === card.id}
                             />
@@ -586,13 +584,14 @@ export default function MemoryGame({ onBack, user }) {
                               </div>
                             )}
                             <label className="field claim-field">
-                              <span>Name the card you are passing</span>
-                              <select onChange={(event) => setClaimedName(event.target.value)} value={claimedName}>
-                                <option value="">Choose an object</option>
-                                {objects.map((object) => (
-                                  <option key={object.name} value={object.name}>{object.name}</option>
-                                ))}
-                              </select>
+                              <span>What are you claiming the card is?</span>
+                              <input
+                                autoComplete="off"
+                                maxLength={40}
+                                onChange={(event) => setClaimedName(event.target.value)}
+                                placeholder="Type any object name"
+                                value={claimedName}
+                              />
                             </label>
                             <GameButton
                               disabled={busy || !claimedName || (selectedCard.direction === "both" && !passDirection)}

@@ -45,7 +45,8 @@ function resolveClaim(card, claimedName) {
 }
 
 function canPassCard(player, cardId) {
-  return player.blockedCardId !== cardId && player.hand.some((card) => card.id === cardId);
+  const hasCard = player.hand.some((card) => card.id === cardId);
+  return hasCard && (player.blockedCardId !== cardId || player.hand.length === 1);
 }
 
 function channel(code) {

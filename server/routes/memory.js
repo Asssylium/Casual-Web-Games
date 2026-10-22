@@ -326,13 +326,14 @@ router.post("/", async (req, res, next) => {
       if (card.direction !== "both" && card.direction !== direction) {
         return sendFailure(res, 400, "That card can only pass in its indicated direction");
       }
-      if (!CARD_CATALOG.some((item) => item.name === claimedName)) {
-        return sendFailure(res, 400, "Choose a valid object name to claim");
+      const claim = typeof claimedName === "string" ? claimedName.trim() : "";
+      if (!claim || claim.length > 40) {
+        return sendFailure(res, 400, "Enter a claim between 1 and 40 characters");
       }
       const receiver = findTarget(room, player, direction);
       if (!receiver) return sendFailure(res, 409, "There is no player in that direction");
       player.hand.splice(cardIndex, 1);
-      room.pending = { card, fromId: userId, toId: receiver.userId, claimedName, direction };
+      room.pending = { card, fromId: userId, toId: receiver.userId, claimedName: claim, direction };
       room.lastReveal = null;
       room.notice = `${player.username} passed a card to ${receiver.username}.`;
     } else if (eventName === "game:accept" || eventName === "game:challenge") {
@@ -364,7 +365,6 @@ router.post("/", async (req, res, next) => {
           },
           outcome,
         };
-        room.pending = undefined;
         if (outcome === "lie") {
           room.notice = `${player.username} caught the lie. ${giver?.username || "The giver"} is out.`;
           player.hand.push(pending.card);
@@ -375,6 +375,7 @@ router.post("/", async (req, res, next) => {
           if (giver) giver.hand.push(pending.card);
           finishTurnAfterElimination(room, userId, giver?.userId);
         }
+        room.pending = undefined;
       }
     } else if (eventName === "game:leave") {
       if (room.phase !== "lobby" && room.phase !== "finished") {

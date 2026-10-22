@@ -16,6 +16,10 @@ test("a different card name is a lie", () => {
   assert.equal(resolveClaim({ name: "Radio" }, "Cat"), "lie");
 });
 
+test("a custom typed claim is judged against the actual card", () => {
+  assert.equal(resolveClaim({ name: "Radio" }, "a very convincing toaster"), "lie");
+});
+
 test("surrounding whitespace does not change a claim", () => {
   assert.equal(resolveClaim({ name: "Lamp" }, "  Lamp  "), "truth");
 });
@@ -36,6 +40,24 @@ test("a player cannot pass the card they just received", () => {
   };
 
   assert.equal(canPassCard(player, "new-card"), false);
+});
+
+test("a player with only the newly received card can pass it", () => {
+  const player = {
+    hand: [{ id: "new-card" }],
+    blockedCardId: "new-card",
+  };
+
+  assert.equal(canPassCard(player, "new-card"), true);
+});
+
+test("a player cannot pass a card they do not have", () => {
+  const player = {
+    hand: [{ id: "new-card" }],
+    blockedCardId: "new-card",
+  };
+
+  assert.equal(canPassCard(player, "missing-card"), false);
 });
 
 test("public room state does not expose private hands", () => {
