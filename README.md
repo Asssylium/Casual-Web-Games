@@ -10,7 +10,7 @@ A casual game portal with a React 19 and Vite frontend, Node.js/Express 5 API, M
 ## Run locally
 
 1. Install dependencies with `npm install`.
-2. Set `MONGO_URI`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, and `ABLY_API_KEY` in `.env`. Create a Google OAuth web client and add your app origin (for local development, `http://localhost:5173`) to its authorized JavaScript origins. Configure the Ably key with `publish` and `subscribe` capabilities for `memory:*` channels.
+2. Set `MONGO_URI`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, and `ABLY_API_KEY` in `.env`. Create a Google OAuth web client and add your app origin (for local development, `http://localhost:5173`) to its authorized JavaScript origins. Configure the server-side Ably key to publish and issue scoped subscribe tokens for `memory:*` and `secret-hitler:*` channels.
 3. Start MongoDB, then run `npm run dev`.
 4. Open [http://localhost:5173](http://localhost:5173). Vite proxies API traffic to the Express server on port 5000.
 
@@ -40,6 +40,12 @@ Run `npm run build` to compile the React app into `dist/`, then start the API an
 Keep the Vercel project root set to the repository root, not `client/`. The root `vercel.json` builds `client/` into `dist/` and rewrites `/api/*` to the Node function at `api/index.js`. Configure `MONGO_URI`, `SESSION_SECRET` (at least 32 random characters), `GOOGLE_CLIENT_ID`, and `ABLY_API_KEY` in Vercel's Production environment, then redeploy. The Ably API key must allow server-side publish and token issuance for `memory:*` channels; it is never sent to the browser. The server issues short-lived Ably tokens limited to subscribing to the current room state and that player's private hand. Do not set `PORT`; Vercel manages function ports. Add the deployed site origin to the Google OAuth client's authorized JavaScript origins.
 
 Memory Pass room state and hands are stored in MongoDB. Ably carries live state updates; clients send game actions to the authenticated API, which validates them before publishing. Configure the same `MONGO_URI` and `SESSION_SECRET` locally when testing multiplayer. Vercel functions may process concurrent updates; optimistic room versioning rejects conflicting moves so clients can refresh and retry. Reveal expiry is applied on the next API request, not by a background timer.
+
+## Secret Hitler
+
+Secret Hitler is a noncommercial fan adaptation for private game nights. It supports 5-10 players, hidden roles and private team knowledge, simultaneous elections, secret policy selection, presidential powers, vetoes, and both teams' win conditions. MongoDB stores room state; when configured, Ably publishes public state separately from each player's private role, intel, and policy hand. Votes are only published after every active player has voted. Without `ABLY_API_KEY`, the game falls back to authenticated polling. Role-reveal expiry is applied on the next API request, not by a background timer.
+
+The original game was created by Mike Boxleiter, Tommy Maranges, and Mac Schubert: [secrethitler.com](https://www.secrethitler.com/). This digital adaptation uses an original interface and does not include the supplied print-and-play artwork. It is distributed under the same [Creative Commons BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/): attribution is required, commercial use is prohibited, and adaptations must use the same license.
 
 ## Authentication API
 

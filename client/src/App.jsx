@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import MemoryGame from "./MemoryGame";
+import SecretHitlerGame from "./SecretHitlerGame";
 
 async function request(url, options = {}) {
   const response = await fetch(url, {
@@ -31,6 +32,7 @@ function Stat({ label, value }) {
 const gameCategories = ["All games", "Party", "Puzzle", "Arcade", "Word", "Board"];
 const games = [
   { title: "Memory Pass", category: "Party", icon: "🃏", available: true },
+  { title: "Secret Hitler", category: "Party", icon: "🗳️", available: true },
   { title: "Memory Match", category: "Puzzle", icon: "🧠" },
   { title: "Tile Twist", category: "Puzzle", icon: "🧩" },
   { title: "Star Dodger", category: "Arcade", icon: "🚀" },
@@ -370,7 +372,7 @@ export default function App() {
   }
 
   return (
-    <div className={`shell${user ? " shell-player" : ""}${selectedGame ? " shell-memory-game" : ""}`}>
+    <div className={`shell${user ? " shell-player" : ""}${selectedGame ? " shell-memory-game" : ""}${selectedGame === "Secret Hitler" ? " shell-secret-game" : ""}`}>
       <header>
         <div className="brand">
           <span aria-hidden="true" className="brand-mark">
@@ -419,6 +421,8 @@ export default function App() {
           <>
             {selectedGame === "Memory Pass" ? (
               <MemoryGame onBack={() => setSelectedGame(null)} user={user} />
+            ) : selectedGame === "Secret Hitler" ? (
+              <SecretHitlerGame onBack={() => setSelectedGame(null)} user={user} />
             ) : (
               <GameMenu onLaunch={setSelectedGame} />
             )}

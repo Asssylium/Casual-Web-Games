@@ -4,6 +4,7 @@ const MemoryRoom = require("../models/MemoryRoom");
 const requireAuth = require("../middleware/auth");
 const { resolveClaim, CARD_CATALOG } = require("../games/memory");
 const { getRealtime, publishRoom } = require("../realtime/ably");
+const { createBot, coin } = require("../bots");
 
 const router = express.Router();
 const MIN_PLAYERS = 2;
@@ -44,6 +45,7 @@ function publicState(room) {
     players: room.players.map((player) => ({
       id: player.userId,
       username: player.username,
+      isBot: player.isBot,
       eliminated: player.eliminated,
       connected: player.connected,
       cardCount: player.hand.length,
@@ -93,7 +95,7 @@ function markStalePlayers(room, now = Date.now()) {
   let changed = false;
   for (const player of room.players) {
     const lastSeenAt = player.lastSeenAt ? new Date(player.lastSeenAt).getTime() : 0;
-    if (player.connected && now - lastSeenAt > PLAYER_TIMEOUT_MS) {
+    if (!player.isBot && player.connected && now - lastSeenAt > PLAYER_TIMEOUT_MS) {
       player.connected = false;
       changed = true;
     }
@@ -293,6 +295,54 @@ function acceptGift(room, player, pending, giver) {
   return outcome;
 }
 
+function runMemoryBots(room) {
+  let changed = false;
+  for (let step = 0; step < 12; step += 1) {
+    completeReveal(room);
+    if (room.phase !== "playing") return changed;
+    const receiver = room.pending && playerById(room, room.pending.toId);
+    if (room.pending && receiver?.isBot) {
+      const pending = room.pending;
+      const giver = playerById(room, pending.fromId);
+      if (coin(0.3)) {
+        const outcome = resolveClaim(pending.card, pending.claimedName);
+        const penalized = outcome === "lie" ? giver : receiver;
+        if (!penalized) return changed;
+        awardPenalty(room, penalized, pending.card);
+        room.pending = undefined;
+        if (room.phase !== "finished") advanceTo(room, outcome === "lie" ? receiver.userId : giver.userId);
+      } else {
+        acceptGift(room, receiver, pending, giver);
+        room.pending = undefined;
+        if (room.phase !== "finished") advanceTo(room, receiver.userId);
+      }
+      changed = true;
+      continue;
+    }
+    const bot = playerById(room, room.currentTurnId);
+    if (!bot?.isBot || room.pending) return changed;
+    if (bot.hand.length === 1 && !room.drawnCard) {
+      if (!room.drawPile.length) refillGiftShop(room);
+      room.drawnCard = room.drawPile.shift();
+      room.usedGiftNames.push(room.drawnCard.name);
+      room.drawnBy = bot.userId;
+      room.phase = "gift-reveal";
+      room.revealEndsAt = Date.now() + DRAW_REVEAL_MS;
+      changed = true;
+      return changed;
+    }
+    const gift = giftToPass(room, bot, bot.userId);
+    if (!gift) return changed;
+    const direction = resolvePassDirection(gift.card, gift.card.direction === "both" && coin(0.5) ? "right" : "left");
+    const target = findTarget(room, bot, direction);
+    if (!target) return changed;
+    if (gift.isDrawnGift) { room.drawnCard = undefined; room.drawnBy = null; } else bot.hand.shift();
+    room.pending = { card: gift.card, fromId: bot.userId, toId: target.userId, claimedName: coin(0.28) ? "Mysterious gift" : gift.card.name, direction };
+    changed = true;
+  }
+  return changed;
+}
+
 async function broadcastRoom(room) {
   await publishRoom(roomChannel(room.code), "game:state", publicState(room));
   await Promise.all(room.players.map((player) =>
@@ -366,7 +416,7 @@ router.get("/", async (req, res, next) => {
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
     }
 
-    if (completeReveal(room) || presenceChanged) await saveAndReply(room, userId, res);
+    if (completeReveal(room) || runMemoryBots(room) || presenceChanged) await saveAndReply(room, userId, res);
     else res.json({ ok: true, ...resultFor(room, userId) });
   } catch (error) {
     next(error);
@@ -414,6 +464,16 @@ router.post("/", async (req, res, next) => {
     }
     const player = findPlayer(room, userId);
     if (!player) return sendFailure(res, 403, "You are not a player in this room");
+
+    if (eventName === "game:add-bot") {
+      if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can add bots");
+      if (room.phase !== "lobby" && room.phase !== "finished") return sendFailure(res, 409, "Bots can only be added between rounds");
+      if (room.players.length >= MAX_PLAYERS) return sendFailure(res, 409, "This room is full");
+      const bot = createBot(room.players);
+      room.players.push({ ...bot, eliminated: false, hand: [], penaltyCards: [] });
+      room.notice = `${bot.username} joined the room.`;
+      return saveAndReply(room, userId, res);
+    }
 
     if (eventName === "game:cancel") {
       if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can cancel the game");
@@ -579,6 +639,7 @@ router.post("/", async (req, res, next) => {
       return sendFailure(res, 400, "Unknown game action");
     }
 
+    runMemoryBots(room);
     return saveAndReply(room, userId, res);
   } catch (error) {
     next(error);

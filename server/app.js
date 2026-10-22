@@ -7,6 +7,7 @@ const session = require("express-session");
 const { MongoStore } = require("connect-mongo");
 const authRoutes = require("./routes/auth");
 const memoryRoutes = require("./routes/memory");
+const secretHitlerRoutes = require("./routes/secret-hitler");
 
 const app = express();
 const sessionSecret = process.env.SESSION_SECRET;
@@ -49,6 +50,7 @@ app.use(sessionMiddleware);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/memory", memoryRoutes.router);
+app.use("/api/secret-hitler", secretHitlerRoutes.router);
 
 const frontendDirectory = path.join(__dirname, "..", "dist");
 const frontendEntry = path.join(frontendDirectory, "index.html");

@@ -14,6 +14,7 @@ const playerSchema = new mongoose.Schema(
   {
     userId: { type: String, required: true },
     username: { type: String, required: true },
+    isBot: { type: Boolean, default: false },
     connected: { type: Boolean, default: true },
     lastSeenAt: { type: Date, default: Date.now },
     eliminated: { type: Boolean, default: false },

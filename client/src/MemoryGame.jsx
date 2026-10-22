@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   Copy,
+  Crown,
   Eye,
   Flag,
   Sparkles,
@@ -600,6 +601,9 @@ export default function MemoryGame({ onBack, user }) {
                 <PlayerList players={room.players} userId={user.id} />
                 {isHost && (
                   <>
+                    <GameButton disabled={busy || room.players.length >= 8} onClick={() => emitAction("game:add-bot")}>
+                      <Users size={16} /> Add bot
+                    </GameButton>
                     <label className="field starting-player-field">
                       <span>First player</span>
                       <select
@@ -689,6 +693,7 @@ export default function MemoryGame({ onBack, user }) {
                     {(room.winnerIds || []).length > 1 ? " tie" : " wins"}
                   </h2>
                   <p className="muted">The player with the fewest penalty points wins.</p>
+                  <ResultsTable players={room.players} userId={user.id} winnerIds={room.winnerIds || []} />
                   {isHost && (
                     <GameButton disabled={busy} onClick={startGame}>
                       Start a new game
@@ -844,5 +849,41 @@ export default function MemoryGame({ onBack, user }) {
         )}
       </dialog>
     </section>
+  );
+}
+
+function ResultsTable({ players, userId, winnerIds = [] }) {
+  const winners = new Set(winnerIds);
+  const rankings = [...players]
+    .sort((left, right) => (left.penaltyCount || 0) - (right.penaltyCount || 0) || left.username.localeCompare(right.username));
+  let previousScore = null;
+  let rank = 0;
+  const rows = rankings.map((player, index) => {
+    const points = player.penaltyCount || 0;
+    if (points !== previousScore) rank = index + 1;
+    previousScore = points;
+    return { player, points, rank, won: winners.has(player.id) };
+  });
+
+  return (
+    <div className="final-results" aria-label="Final scores">
+      <div className="fireworks" aria-hidden="true"><span>✦</span><span>✺</span><span>✧</span><span>✹</span></div>
+      <div className="final-results-heading">
+        <span className="winner-throne" aria-hidden="true"><Crown size={25} /><b>♛</b></span>
+        <div><span className="eyebrow">Final standings</span><h3>The throne goes to first place</h3></div>
+      </div>
+      <div className="results-table-wrap">
+        <table className="results-table">
+          <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Points</th><th scope="col">Result</th></tr></thead>
+          <tbody>{rows.map(({ player, points, rank, won }) => (
+            <tr className={won ? "is-winner" : "is-loser"} key={player.id}>
+              <td>{rank === 1 ? <span className="first-place"><Crown aria-label="First place" size={16} /> 1</span> : rank}</td>
+              <td>{player.username}{player.id === userId ? " (you)" : ""}</td><td>{points}</td>
+              <td><span className={`result-badge ${won ? "result-winner" : "result-loser"}`}>{won ? "Winner" : "Lost"}</span></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
   );
 }
