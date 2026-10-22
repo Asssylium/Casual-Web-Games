@@ -67,7 +67,7 @@ function PlayerList({ players, currentTurnId, userId }) {
   );
 }
 
-function PlayerOrbit({ room, userId, revealCards = null, selectedDirection = "" }) {
+function PlayerOrbit({ room, userId, revealCards = null, ownGifts = [], selectedDirection = "" }) {
   const players = room.players;
   const count = players.length;
   const fromId = room.pending?.fromId || (room.currentTurnId === userId ? userId : null);
@@ -131,13 +131,13 @@ function PlayerOrbit({ room, userId, revealCards = null, selectedDirection = "" 
                 {player.eliminated ? "Out" : `${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.penaltyCount || 0} pt`}
               </span>
             )}
-            {!revealedCard && !player.eliminated && player.gifts?.length > 0 && (
-              <div aria-label={`${player.username}'s gifts`} className="orbit-gift-stack">
-                {player.gifts.map((gift, giftIndex) => (
+            {!revealedCard && !player.eliminated && player.id === userId && ownGifts.length > 0 && (
+              <div aria-label="Your face-up gifts" className="orbit-gift-stack">
+                {ownGifts.map((gift, giftIndex) => (
                   <div
                     aria-label={`${gift.name}, ${directionText(gift.direction)}`}
-                    className={`orbit-gift-face${player.id === userId ? " orbit-gift-owner" : " orbit-gift-other"}`}
-                    key={`${gift.name}-${giftIndex}`}
+                    className="orbit-gift-face orbit-gift-owner"
+                    key={`${gift.id || gift.name}-${giftIndex}`}
                     role="img"
                   >
                     <span aria-hidden="true">{gift.icon}</span>
@@ -145,6 +145,24 @@ function PlayerOrbit({ room, userId, revealCards = null, selectedDirection = "" 
                     <small>{directionText(gift.direction)}</small>
                   </div>
                 ))}
+              </div>
+            )}
+            {!revealedCard && !player.eliminated && player.id !== userId && player.giftDirections?.length > 0 && (
+              <div aria-label={`${player.username}'s face-down gifts`} className="orbit-gift-stack">
+                {player.giftDirections.map((giftDirection, giftIndex) => {
+                  const GiftArrow = giftDirection === "both" ? ArrowLeftRight : giftDirection === "left" ? ArrowLeft : ArrowRight;
+                  return (
+                    <div
+                      aria-label={`Face-down gift, arrow ${giftDirection}`}
+                      className="orbit-gift-back"
+                      key={`${player.id}-gift-back-${giftIndex}`}
+                      role="img"
+                    >
+                      <span className="gift-back-mark" aria-hidden="true">✦</span>
+                      <GiftArrow aria-hidden="true" size={16} />
+                    </div>
+                  );
+                })}
               </div>
             )}
             {isTarget && (
@@ -185,6 +203,7 @@ function ObjectCard({ card, label = "", locked = false }) {
 export default function MemoryGame({ onBack, user }) {
   const ablyRef = useRef(null);
   const turnDialogRef = useRef(null);
+  const giftRevealDialogRef = useRef(null);
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
@@ -439,6 +458,7 @@ export default function MemoryGame({ onBack, user }) {
   const isMyTurn = room?.currentTurnId === user.id;
   const isReceiver = room?.pending?.toId === user.id;
   const giftToPassNow = drawnCard || (hand.length > 1 ? hand[0] : null);
+  const shouldShowGiftReveal = Boolean(room?.phase === "gift-reveal" && room.revealedGift);
   const selectedPassDirection = giftToPassNow?.direction === "both"
     ? passDirection
     : giftToPassNow?.direction;
@@ -457,6 +477,13 @@ export default function MemoryGame({ onBack, user }) {
     if (shouldOpenTurnDialog && !dialog.open) dialog.showModal();
     if (!shouldOpenTurnDialog && dialog.open) dialog.close();
   }, [shouldOpenTurnDialog, room?.currentTurnId, room?.pending?.toId, hand.length, drawnCard?.id]);
+
+  useEffect(() => {
+    const dialog = giftRevealDialogRef.current;
+    if (!dialog) return;
+    if (shouldShowGiftReveal && !dialog.open) dialog.showModal();
+    if (!shouldShowGiftReveal && dialog.open) dialog.close();
+  }, [shouldShowGiftReveal, room?.revealedGift?.id]);
 
   function openTurnDialog() {
     if (!turnDialogRef.current?.open) turnDialogRef.current?.showModal();
@@ -615,17 +642,6 @@ export default function MemoryGame({ onBack, user }) {
                 </section>
               )}
 
-              {room.phase === "gift-reveal" && room.revealedGift && (
-                <section className="gift-reveal" aria-live="polite">
-                  <div>
-                    <span className="eyebrow">New gift from the shop</span>
-                    <h2>{room.players.find((player) => player.id === room.drawnBy)?.username} drew a gift</h2>
-                  </div>
-                  <ObjectCard card={room.revealedGift} label={directionText(room.revealedGift.direction)} />
-                  <p>Remember the gift and its arrow. Passing begins in {secondsLeft}s.</p>
-                </section>
-              )}
-
               {room.phase === "playing" && (
                 <div className="playing-layout">
                   <section aria-label="Players at the table" className="live-table-panel">
@@ -642,8 +658,14 @@ export default function MemoryGame({ onBack, user }) {
                         players={room.players}
                         room={room}
                         userId={user.id}
+                        ownGifts={[...hand, ...(drawnCard ? [drawnCard] : [])]}
                       />
                     </div>
+                    {(isMyTurn || isReceiver) && (
+                      <GameButton className="turn-reopen-button" disabled={busy} onClick={openTurnDialog}>
+                        {isReceiver ? "Review gift offer" : "Open turn controls"}
+                      </GameButton>
+                    )}
                   </section>
                   <div className="game-info-layout">
                     <section aria-label="Game log" className="game-log-panel">
@@ -665,42 +687,6 @@ export default function MemoryGame({ onBack, user }) {
                       </ol>
                     </section>
 
-                    <section aria-label="Your gifts" className="player-hand-panel">
-                    <div className="game-log-heading">
-                      <div>
-                        <span className="eyebrow">Your hand</span>
-                        <h2>{hand.length + (drawnCard ? 1 : 0)} gift{hand.length + (drawnCard ? 1 : 0) === 1 ? "" : "s"}</h2>
-                      </div>
-                      <span className="hand-count">{currentUser?.penaltyCount || 0}/3 points</span>
-                    </div>
-                    <div className="hand-cards">
-                      {hand.map((card, index) => (
-                        <ObjectCard
-                          card={card}
-                          key={card.id}
-                          label={hand.length > 1 && index === 0 ? "Oldest" : "Your gift"}
-                          locked={hand.length > 1 && index > 0}
-                        />
-                      ))}
-                      {drawnCard && <ObjectCard card={drawnCard} label="Just drawn" />}
-                    </div>
-                    {isMyTurn && !room.pending && (
-                      <GameButton disabled={busy} onClick={openTurnDialog}>
-                        {hand.length === 1 && !drawnCard ? "Draw a gift" : "Continue your turn"}
-                      </GameButton>
-                    )}
-                    {room.pending && isReceiver && (
-                      <div className="receiver-prompt">
-                        <p className="muted">Your gift offer is waiting in the turn dialog.</p>
-                        <GameButton disabled={busy} onClick={openTurnDialog}>Review gift offer</GameButton>
-                      </div>
-                    )}
-                    {!isMyTurn && !room.pending && (
-                      <p className="muted">
-                        {room.players.find((player) => player.id === room.currentTurnId)?.username || "A player"} is taking a turn.
-                      </p>
-                    )}
-                    </section>
                   </div>
                 </div>
               )}
@@ -850,6 +836,24 @@ export default function MemoryGame({ onBack, user }) {
             </>
           ) : null}
         </div>
+      </dialog>
+
+      <dialog
+        aria-labelledby="gift-reveal-title"
+        className="gift-reveal-dialog"
+        ref={giftRevealDialogRef}
+      >
+        {room?.revealedGift && (
+          <div className="gift-reveal-content" aria-live="polite">
+            <span className="eyebrow">Gift shop reveal</span>
+            <h2 id="gift-reveal-title">
+              {room.players.find((player) => player.id === room.drawnBy)?.username} drew a gift
+            </h2>
+            <ObjectCard card={room.revealedGift} label={directionText(room.revealedGift.direction)} />
+            <p>Remember the gift and its arrow.</p>
+            <strong className="gift-reveal-countdown">Passing begins in {secondsLeft}s</strong>
+          </div>
+        )}
       </dialog>
     </section>
   );

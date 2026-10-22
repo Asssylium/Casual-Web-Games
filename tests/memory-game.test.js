@@ -196,7 +196,7 @@ test("three penalty points end the game and retain tied lowest scorers", () => {
   assert.equal(room.winnerId, null);
 });
 
-test("public room state shows held gifts on the table but not penalty-card contents", () => {
+test("public room state shares only arrows for held gifts, not their faces or penalty-card contents", () => {
   const room = {
     code: "ABCDE",
     phase: "playing",
@@ -226,8 +226,11 @@ test("public room state shows held gifts on the table but not penalty-card conte
   };
 
   const state = publicState(room);
-  assert.deepEqual(state.players[0].gifts, [{ name: "Cat", icon: "cat", direction: "left" }]);
-  assert.deepEqual(state.players[1].gifts, [{ name: "Lamp", icon: "lamp", direction: "right" }]);
+  assert.deepEqual(state.players[0].giftDirections, ["left"]);
+  assert.deepEqual(state.players[1].giftDirections, ["right"]);
+  assert.equal(JSON.stringify(state).includes("gift-1"), false);
+  assert.equal(JSON.stringify(state).includes("Cat"), false);
+  assert.equal(JSON.stringify(state).includes("Lamp"), false);
   assert.equal(JSON.stringify(state).includes("penalty-secret"), false);
   assert.equal(JSON.stringify(state).includes("Secret Penalty"), false);
   assert.deepEqual(playerHand(room, "player-1").cards, room.players[0].hand);

@@ -160,9 +160,13 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .room-lobby-notice, .room-status-line { color: #9ba7bc; font-size: .82rem; }
 .room-status-line { padding: 10px 12px; border-left: 2px solid #a78bfa; background: #a78bfa0c; }
 .memory-reveal { display: grid; gap: 18px; }
-.gift-reveal { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 20px; border: 1px solid #fbbf2440; border-radius: 12px; background: #fbbf240b; }
-.gift-reveal h2 { margin: 7px 0 0; font-size: 1.25rem; }
-.gift-reveal p { flex-basis: 100%; margin: 0; color: #9ba7bc; font-size: .84rem; }
+.gift-reveal-dialog { width: min(390px, calc(100vw - 28px)); max-width: none; max-height: min(88dvh, 700px); overflow-y: auto; padding: 0; border: 1px solid #fbbf2466; border-radius: 16px; background: #151b2b; color: #f8fafc; box-shadow: 0 28px 90px #000a; }
+.gift-reveal-dialog::backdrop { background: #050812a8; backdrop-filter: blur(3px); }
+.gift-reveal-content { display: grid; justify-items: center; gap: 14px; padding: clamp(22px, 5vw, 30px); text-align: center; }
+.gift-reveal-content h2 { margin: 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.35rem; }
+.gift-reveal-content .object-card { width: min(100%, 210px); }
+.gift-reveal-content p { margin: 0; color: #b6bfd0; font-size: .86rem; }
+.gift-reveal-countdown { color: #fcd34d; font-size: .82rem; }
 .reveal-heading, .turn-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .reveal-countdown { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #fbbf2466; border-radius: 50%; color: #fcd34d; font-size: 1.1rem; }
 .reveal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
@@ -186,7 +190,9 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .orbit-gift-face > span { font-size: 1.05rem; line-height: 1; }
 .orbit-gift-face > strong { max-width: 100%; overflow: hidden; font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; }
 .orbit-gift-face > small { font-size: .46rem; white-space: nowrap; }
-.orbit-gift-other { transform: rotate(180deg); }
+.orbit-gift-back { position: relative; display: grid; place-items: center; width: 46px; height: 58px; overflow: hidden; border: 1px solid #73b7a080; border-radius: 7px; background: repeating-linear-gradient(135deg, #164a46 0 4px, #1c6259 4px 8px); box-shadow: inset 0 0 0 3px #e9d8aa, inset 0 0 0 5px #164a46; color: #f1dfae; }
+.gift-back-mark { position: absolute; top: 4px; font-size: .55rem; }
+.orbit-gift-back svg { margin-top: 7px; }
 .orbit-seat-turn { border-color: #38bdf877; }
 .orbit-seat-turn .orbit-avatar { border-color: #38bdf8; color: #7dd3fc; }
 .orbit-seat-target { z-index: 2; border-color: #a78bfa; background: #302750; box-shadow: 0 0 0 3px #a78bfa40, 0 15px 30px #0008; }
@@ -208,8 +214,7 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .live-table-panel .game-log-heading { padding: 0 4px; }
 .live-table-panel .table-panel { order: 0; }
 .live-table-panel .player-orbit { width: 100%; min-height: clamp(340px, 52vh, 580px); border-radius: 20px; }
-.game-info-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 14px; align-items: start; }
-.game-log-panel, .player-hand-panel { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 18px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
+.game-log-panel { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 18px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
 .game-log-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .game-log-heading h2 { margin: 5px 0 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.15rem; }
 .game-log-list { display: grid; align-content: start; gap: 0; max-height: min(30vh, 260px); overflow-y: auto; padding: 0; margin: 0; list-style: none; }
@@ -220,10 +225,7 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .game-log-penalty .game-log-marker { background: #fb7185; }
 .game-log-start .game-log-marker { background: #34d399; }
 .game-log-empty { padding: 12px 0; color: #9ba7bc; font-size: .84rem; }
-.player-hand-panel .hand-cards { min-height: 150px; }
-.player-hand-panel > .game-action { justify-self: start; }
-.receiver-prompt { display: grid; justify-items: start; gap: 10px; }
-.receiver-prompt p { margin: 0; }
+.turn-reopen-button { justify-self: center; min-width: 190px; }
 .turn-panel, .table-panel, .winner-panel { padding: 20px; border: 1px solid #ffffff18; border-radius: 13px; background: #0c1220; }
 .turn-panel-heading { margin-bottom: 18px; }
 .turn-panel-heading h2 { font-size: 1.25rem; }
@@ -296,7 +298,6 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
   .layout { grid-template-columns: 1fr; gap: 28px; }
   .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .reveal-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .game-info-layout { grid-template-columns: 1fr; }
   .player-orbit { min-height: 500px; }
   .intro h1 { font-size: clamp(2.7rem, 13vw, 4.6rem); }
   .intro p { margin-bottom: 0; }

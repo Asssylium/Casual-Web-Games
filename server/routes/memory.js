@@ -47,11 +47,7 @@ function publicState(room) {
       connected: player.connected,
       cardCount: player.hand.length,
       penaltyCount: player.penaltyCards?.length || 0,
-      gifts: player.hand.map((card) => ({
-        name: card.name,
-        icon: card.icon,
-        direction: card.direction,
-      })),
+      giftDirections: player.hand.map((card) => card.direction),
     })),
     currentTurnId: room.currentTurnId,
     giftShopCount: room.drawPile?.length || 0,
