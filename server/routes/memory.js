@@ -47,7 +47,7 @@ function publicState(room) {
       username: player.username,
       isBot: isBot(player),
       eliminated: player.eliminated,
-      connected: player.connected,
+      connected: player.connected || isBot(player),
       cardCount: player.hand.length,
       penaltyCount: player.penaltyCards?.length || 0,
       giftDirections: player.hand.map((card) => card.direction),
@@ -88,7 +88,7 @@ function findPlayer(room, userId) {
 }
 
 function connectedPlayers(room) {
-  return room.players.filter((player) => player.connected && !player.eliminated);
+  return room.players.filter((player) => (player.connected || isBot(player)) && !player.eliminated);
 }
 
 function markStalePlayers(room, now = Date.now()) {
@@ -109,7 +109,7 @@ function playerById(room, userId) {
 
 function advanceTo(room, userId) {
   const player = playerById(room, userId);
-  if (player && !player.eliminated && player.connected && player.hand.length > 0) {
+  if (player && !player.eliminated && (player.connected || isBot(player)) && player.hand.length > 0) {
     room.currentTurnId = player.userId;
     return;
   }
@@ -117,7 +117,7 @@ function advanceTo(room, userId) {
   const start = Math.max(0, room.players.findIndex((item) => item.userId === userId));
   for (let offset = 1; offset <= room.players.length; offset += 1) {
     const candidate = room.players[(start + offset) % room.players.length];
-    if (!candidate.eliminated && candidate.connected && candidate.hand.length > 0) {
+    if (!candidate.eliminated && (candidate.connected || isBot(candidate)) && candidate.hand.length > 0) {
       room.currentTurnId = candidate.userId;
       return;
     }
@@ -133,7 +133,7 @@ function findTarget(room, giver, direction) {
   for (let offset = 1; offset < room.players.length; offset += 1) {
     const index = (start + step * offset + room.players.length * 2) % room.players.length;
     const player = room.players[index];
-    if (!player.eliminated && player.connected) return player;
+    if (!player.eliminated && (player.connected || isBot(player))) return player;
   }
   return null;
 }
