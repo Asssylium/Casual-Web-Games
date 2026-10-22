@@ -1,7 +1,12 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { canPassCard, resolveClaim } = require("../server/games/memory");
+const { canPassCard, resolveClaim, CARD_CATALOG } = require("../server/games/memory");
 const { playerHand, publicState } = require("../server/routes/memory");
+
+test("the route's card catalog is exported", () => {
+  assert.ok(Array.isArray(CARD_CATALOG));
+  assert.ok(CARD_CATALOG.length > 0);
+});
 
 test("a matching card name is truthful regardless of capitalization", () => {
   assert.equal(resolveClaim({ name: "Chair" }, "chair"), "truth");

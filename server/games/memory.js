@@ -486,3 +486,4 @@ function attachMemoryGame(io) {
 module.exports = attachMemoryGame;
 module.exports.resolveClaim = resolveClaim;
 module.exports.canPassCard = canPassCard;
+module.exports.CARD_CATALOG = CARD_CATALOG;
