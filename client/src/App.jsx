@@ -162,12 +162,12 @@ function AuthCard({ onAuthenticated }) {
           },
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: "filled_blue",
+          theme: "outline",
           size: "large",
-          shape: "rectangular",
+          shape: "pill",
           logo_alignment: "left",
-          width: Math.min(googleButtonRef.current.clientWidth, 400),
-          text: "continue_with",
+          width: Math.min(googleButtonRef.current.clientWidth, 360),
+          text: "signin_with",
         });
         setGoogleReady(true);
       };

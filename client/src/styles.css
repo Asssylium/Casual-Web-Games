@@ -127,6 +127,9 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .join-room-form input:focus, .claim-field input:focus { border-color: #a78bfa; }
 .game-room { display: grid; gap: 20px; padding: clamp(20px, 3vw, 32px); }
 .room-toolbar { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--game-line, #ffffff18); }
+.cancel-game-button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #fb718540; border-radius: 8px; background: #fb718510; color: #fda4af; font-size: .76rem; }
+.cancel-game-button:hover:not(:disabled) { border-color: #fb7185a0; background: #fb71851c; }
+.cancel-game-button:disabled { cursor: wait; opacity: .55; }
 .copy-room-code { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; padding: 7px 10px; border: 1px solid var(--game-line, #ffffff20); border-radius: 8px; background: #ffffff06; color: #cbd5e1; font-size: .76rem; }
 .copy-room-code:hover { border-color: #a78bfa80; color: #c4b5fd; }
 .round-label { padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 999px; color: #cbd5e1; font-size: .76rem; }

@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { canPassCard, resolveClaim, CARD_CATALOG } = require("../server/games/memory");
-const { playerHand, publicState } = require("../server/routes/memory");
+const { playerHand, publicState, markStalePlayers } = require("../server/routes/memory");
 
 test("the route's card catalog is exported", () => {
   assert.ok(Array.isArray(CARD_CATALOG));
@@ -58,6 +58,19 @@ test("a player cannot pass a card they do not have", () => {
   };
 
   assert.equal(canPassCard(player, "missing-card"), false);
+});
+
+test("stale players are marked disconnected while recent heartbeats stay connected", () => {
+  const now = Date.now();
+  const room = {
+    players: [
+      { connected: true, lastSeenAt: new Date(now - 60_000) },
+      { connected: true, lastSeenAt: new Date(now - 10_000) },
+    ],
+  };
+
+  assert.equal(markStalePlayers(room, now), true);
+  assert.deepEqual(room.players.map((player) => player.connected), [false, true]);
 });
 
 test("public room state does not expose private hands", () => {

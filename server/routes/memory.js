@@ -9,6 +9,7 @@ const router = express.Router();
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
 const REVEAL_MS = 12_000;
+const PLAYER_TIMEOUT_MS = 45_000;
 const ROOM_CODE_LENGTH = 5;
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -80,6 +81,18 @@ function activePlayers(room) {
 
 function connectedPlayers(room) {
   return room.players.filter((player) => player.connected && !player.eliminated);
+}
+
+function markStalePlayers(room, now = Date.now()) {
+  let changed = false;
+  for (const player of room.players) {
+    const lastSeenAt = player.lastSeenAt ? new Date(player.lastSeenAt).getTime() : 0;
+    if (player.connected && now - lastSeenAt > PLAYER_TIMEOUT_MS) {
+      player.connected = false;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function playerById(room, userId) {
@@ -248,7 +261,13 @@ router.get("/", async (req, res, next) => {
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
     }
 
-    if (completeReveal(room)) await saveAndReply(room, userId, res);
+    const presenceChanged = markStalePlayers(room);
+    if (room.players.every((player) => !player.connected)) {
+      await MemoryRoom.deleteOne({ _id: room._id });
+      return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
+    }
+
+    if (completeReveal(room) || presenceChanged) await saveAndReply(room, userId, res);
     else res.json({ ok: true, ...resultFor(room, userId) });
   } catch (error) {
     next(error);
@@ -290,16 +309,37 @@ router.post("/", async (req, res, next) => {
     }
 
     if (!room) return sendFailure(res, 404, "No active room was found for your account");
-    if (completeReveal(room)) {
+    if (eventName !== "game:cancel" && completeReveal(room)) {
       await room.save();
       await broadcastRoom(room);
     }
     const player = findPlayer(room, userId);
     if (!player) return sendFailure(res, 403, "You are not a player in this room");
+    const presenceChanged = markStalePlayers(room);
+
+    if (eventName === "game:cancel") {
+      if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can cancel the game");
+      const code = room.code;
+      await MemoryRoom.deleteOne({ _id: room._id });
+      try {
+        await publishRoom(roomChannel(code), "game:cancelled", { code, cancelledBy: userId });
+      } catch (error) {
+        console.error("Room cancellation broadcast failed:", error);
+      }
+      return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null } });
+    }
+
+    player.connected = true;
+    player.lastSeenAt = new Date();
+
+    if (eventName === "game:heartbeat") {
+      await room.save();
+      if (presenceChanged) await broadcastRoom(room);
+      return res.json({ ok: true, ...resultFor(room, userId) });
+    }
 
     if (eventName === "game:reconnect") {
       if (player.eliminated) return sendFailure(res, 403, "You are no longer in this game");
-      player.connected = true;
       if (room.phase === "playing" && !room.currentTurnId) room.currentTurnId = userId;
       room.notice = `${username} reconnected.`;
     } else if (eventName === "game:start") {
@@ -398,4 +438,4 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-module.exports = { router, handChannel, roomChannel, resultFor, publicState, playerHand };
+module.exports = { router, handChannel, roomChannel, resultFor, publicState, playerHand, markStalePlayers };

@@ -280,7 +280,14 @@ export default function MemoryGame({ onBack, user }) {
       setSelectedCardId("");
       setPassDirection("");
     });
-    void Promise.all([subscribeToRoom, subscribeToHand]).catch((connectionError) => {
+    const subscribeToCancellation = stateChannel.subscribe("game:cancelled", (message) => {
+      if (!active || message.data.cancelledBy === user.id) return;
+      setRoom(null);
+      setHand([]);
+      setBlockedCardId(null);
+      setError("The host cancelled the game.");
+    });
+    void Promise.all([subscribeToRoom, subscribeToHand, subscribeToCancellation]).catch((connectionError) => {
       if (active) setError(connectionError.message || "Could not connect to the game");
     });
 
@@ -291,6 +298,16 @@ export default function MemoryGame({ onBack, user }) {
       if (ablyRef.current === client) ablyRef.current = null;
     };
   }, [initialized, room?.code, user.id]);
+
+  useEffect(() => {
+    if (!connected || !room?.code) return undefined;
+    const heartbeat = window.setInterval(() => {
+      void postGameAction("game:heartbeat").catch((heartbeatError) => {
+        setError(heartbeatError.message || "Could not update the game connection");
+      });
+    }, 15_000);
+    return () => window.clearInterval(heartbeat);
+  }, [connected, room?.code]);
 
   useEffect(() => {
     if (room?.phase !== "reveal" || !room.revealEndsAt) {
@@ -347,6 +364,20 @@ export default function MemoryGame({ onBack, user }) {
       setBlockedCardId(null);
       setBusy(false);
       onBack();
+    }
+  }
+
+  async function cancelGame() {
+    if (!window.confirm("Cancel this game for everyone?")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await postGameAction("game:cancel");
+      applyGameState(result);
+    } catch (cancelError) {
+      setError(cancelError.message || "Could not cancel the game");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -451,6 +482,11 @@ export default function MemoryGame({ onBack, user }) {
             <span className="round-label">
               {room.phase === "lobby" ? "Lobby" : `Round ${room.round}`}
             </span>
+            {isHost && (
+              <button className="cancel-game-button" disabled={busy} onClick={cancelGame} type="button">
+                <X aria-hidden="true" size={15} /> Cancel game
+              </button>
+            )}
             <button
               aria-label={copied ? "Room code copied" : `Copy room code ${room.code}`}
               className="copy-room-code"

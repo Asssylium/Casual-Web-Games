@@ -15,6 +15,7 @@ const playerSchema = new mongoose.Schema(
     userId: { type: String, required: true },
     username: { type: String, required: true },
     connected: { type: Boolean, default: true },
+    lastSeenAt: { type: Date, default: Date.now },
     eliminated: { type: Boolean, default: false },
     hand: { type: [cardSchema], default: [] },
     blockedCardId: { type: String, default: null },
@@ -45,5 +46,7 @@ const memoryRoomSchema = new mongoose.Schema(
   },
   { timestamps: true, optimisticConcurrency: true }
 );
+
+memoryRoomSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 120 });
 
 module.exports = mongoose.models.MemoryRoom || mongoose.model("MemoryRoom", memoryRoomSchema);
