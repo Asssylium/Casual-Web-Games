@@ -496,7 +496,16 @@ export default function MemoryGame({ onBack, user }) {
           <button className="back-button" onClick={leaveRoom} type="button">
             <ArrowLeft aria-hidden="true" size={16} /> Games
           </button>
-        ) : <span />}
+        ) : (
+          <button
+            aria-label="Return to games without leaving the active room"
+            className="back-button"
+            onClick={onBack}
+            type="button"
+          >
+            <ArrowLeft aria-hidden="true" size={16} /> Games
+          </button>
+        )}
         <div className={`connection-state${connected ? " is-connected" : ""}`}>
           {connected ? <Wifi aria-hidden="true" size={15} /> : <WifiOff aria-hidden="true" size={15} />}
           {connected ? "Connected" : "Connecting"}

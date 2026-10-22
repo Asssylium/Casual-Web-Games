@@ -345,7 +345,7 @@ router.get("/", async (req, res, next) => {
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
     }
 
-    markStalePlayers(room);
+    const presenceChanged = markStalePlayers(room);
     if (room.players.every((player) => !player.connected)) {
       await MemoryRoom.deleteOne({ _id: room._id });
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
