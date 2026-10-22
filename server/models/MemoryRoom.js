@@ -24,6 +24,15 @@ const playerSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const gameLogEntrySchema = new mongoose.Schema(
+  {
+    text: { type: String, required: true },
+    type: { type: String, default: "event" },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const memoryRoomSchema = new mongoose.Schema(
   {
     code: { type: String, required: true, unique: true },
@@ -47,6 +56,7 @@ const memoryRoomSchema = new mongoose.Schema(
     revealEndsAt: { type: Number, default: null },
     lastReveal: { type: mongoose.Schema.Types.Mixed, default: null },
     notice: { type: String, default: "" },
+    gameLog: { type: [gameLogEntrySchema], default: [] },
     winnerId: { type: String, default: null },
     winnerIds: { type: [String], default: [] },
   },

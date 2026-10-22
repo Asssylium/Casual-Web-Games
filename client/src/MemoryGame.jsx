@@ -424,7 +424,7 @@ export default function MemoryGame({ onBack, user }) {
   const isReceiver = room?.pending?.toId === user.id;
   const giftToPassNow = drawnCard || (hand.length > 1 ? hand[0] : null);
   const shouldOpenTurnDialog = Boolean(
-    room?.phase === "playing" && isMyTurn && !room.pending
+    room?.phase === "playing" && ((isMyTurn && !room.pending) || isReceiver)
   );
   const canLeaveRoom = !room || room.phase === "lobby" || room.phase === "finished";
 
@@ -605,106 +605,62 @@ export default function MemoryGame({ onBack, user }) {
 
               {room.phase === "playing" && (
                 <div className="playing-layout">
-                  <section className="turn-panel">
-                    <div className="turn-panel-heading">
+                  <section aria-label="Game log" className="game-log-panel">
+                    <div className="game-log-heading">
                       <div>
-                        <span className="eyebrow">{isMyTurn ? "Your turn" : "Table"}</span>
-                        <h2>
-                          {isMyTurn
-                            ? drawnCard
-                              ? "Pass the new gift"
-                              : hand.length > 1
-                                ? "Pass your oldest gift"
-                                : "Draw a new gift"
-                            : "Watch the pass"}
-                        </h2>
+                        <span className="eyebrow">Round {room.round}</span>
+                        <h2>Game log</h2>
                       </div>
-                      <span className="hand-count">
-                        {hand.length + (drawnCard ? 1 : 0)} gifts · {currentUser?.penaltyCount || 0} points
-                      </span>
+                      <span className="gift-shop-count">Shop · {room.giftShopCount}</span>
                     </div>
-
-                    {room.pending ? (
-                      <div className="pending-claim">
-                        <div className="claim-mark" aria-hidden="true">?</div>
-                        <p>
-                          <strong>{room.pending.fromName}</strong> says the card is <strong>{room.pending.claimedName}</strong>.
-                          {isReceiver ? " Is that true?" : ` ${room.pending.toName} is deciding.`}
-                        </p>
-                        {isReceiver && (
-                          <div className="challenge-actions">
-                            <GameButton disabled={busy} onClick={() => emitAction("game:accept")}>
-                              Accept card
-                            </GameButton>
-                            <GameButton
-                              className="danger-action"
-                              disabled={busy}
-                              onClick={() => emitAction("game:challenge")}
-                            >
-                              Call bluff
-                            </GameButton>
-                          </div>
-                        )}
-                      </div>
-                    ) : isMyTurn ? (
-                      <div className="turn-prompt">
-                        <div className="hand-cards">
-                          {hand.map((card, index) => (
-                            <ObjectCard
-                              card={card}
-                              key={card.id}
-                              label={hand.length > 1 && index === 0 ? "Oldest · pass next" : "Your gift"}
-                              locked={hand.length > 1 && index > 0}
-                            />
-                          ))}
-                          {drawnCard && <ObjectCard card={drawnCard} label="New gift" />}
-                        </div>
-                        <p>{hand.length === 1 && !drawnCard
-                          ? "Draw a gift to start your turn."
-                          : `Send ${drawnCard ? "the new gift" : "your oldest gift"} in its arrow direction.`}</p>
-                        <GameButton disabled={busy} onClick={openTurnDialog}>
-                          {hand.length === 1 && !drawnCard ? "Open draw controls" : "Open pass controls"}
-                        </GameButton>
-                      </div>
-                    ) : (
-                      <div className="waiting-turn">
-                        <span className="waiting-pulse" aria-hidden="true" />
-                        <p>
-                          {currentUser?.eliminated
-                            ? "You are out. Watch the remaining players."
-                            : room.players.find((player) => player.id === room.currentTurnId)?.username
-                              ? `Waiting for ${room.players.find((player) => player.id === room.currentTurnId).username} to pass a card.`
-                              : "Waiting for a player to reconnect."}
-                        </p>
-                      </div>
-                    )}
+                    <ol aria-live="polite" className="game-log-list">
+                      {[...(room.gameLog || [])].reverse().map((entry, index) => (
+                        <li className={`game-log-entry game-log-${entry.type || "event"}`} key={`${entry.createdAt}-${index}`}>
+                          <span aria-hidden="true" className="game-log-marker" />
+                          <span>{entry.text}</span>
+                        </li>
+                      ))}
+                      {!room.gameLog?.length && <li className="game-log-empty">The game log will appear here.</li>}
+                    </ol>
                   </section>
 
-                  <aside className="table-panel">
-                    <span className="eyebrow">At the table</span>
-                    <PlayerOrbit
-                      players={room.players}
-                      room={room}
-                      userId={user.id}
-                    />
-                  </aside>
+                  <section aria-label="Your gifts" className="player-hand-panel">
+                    <div className="game-log-heading">
+                      <div>
+                        <span className="eyebrow">Your hand</span>
+                        <h2>{hand.length + (drawnCard ? 1 : 0)} gift{hand.length + (drawnCard ? 1 : 0) === 1 ? "" : "s"}</h2>
+                      </div>
+                      <span className="hand-count">{currentUser?.penaltyCount || 0}/3 points</span>
+                    </div>
+                    <div className="hand-cards">
+                      {hand.map((card, index) => (
+                        <ObjectCard
+                          card={card}
+                          key={card.id}
+                          label={hand.length > 1 && index === 0 ? "Oldest" : "Your gift"}
+                          locked={hand.length > 1 && index > 0}
+                        />
+                      ))}
+                      {drawnCard && <ObjectCard card={drawnCard} label="Just drawn" />}
+                    </div>
+                    {isMyTurn && !room.pending && (
+                      <GameButton disabled={busy} onClick={openTurnDialog}>
+                        {hand.length === 1 && !drawnCard ? "Draw a gift" : "Continue your turn"}
+                      </GameButton>
+                    )}
+                    {room.pending && isReceiver && (
+                      <div className="receiver-prompt">
+                        <p className="muted">Your gift offer is waiting in the turn dialog.</p>
+                        <GameButton disabled={busy} onClick={openTurnDialog}>Review gift offer</GameButton>
+                      </div>
+                    )}
+                    {!isMyTurn && !room.pending && (
+                      <p className="muted">
+                        {room.players.find((player) => player.id === room.currentTurnId)?.username || "A player"} is taking a turn.
+                      </p>
+                    )}
+                  </section>
                 </div>
-              )}
-
-              {room.lastReveal && (
-                <section className={`challenge-result challenge-${room.lastReveal.outcome}`} aria-live="polite">
-                  <span className="result-icon" aria-hidden="true">{room.lastReveal.card.icon}</span>
-                  <div>
-                    <strong>
-                      {room.lastReveal.fromName} passed {room.lastReveal.card.name}, saying “{room.lastReveal.claimedName}”.
-                    </strong>
-                    <p>
-                      {room.lastReveal.penaltyPlayerName} receives a penalty point
-                      {room.lastReveal.penaltyCount ? ` (${room.lastReveal.penaltyCount}/3)` : ""}.
-                      {` The card points ${room.lastReveal.card.direction}.`}
-                    </p>
-                  </div>
-                </section>
               )}
 
               {room.phase === "finished" && (
@@ -742,11 +698,13 @@ export default function MemoryGame({ onBack, user }) {
         <div className="turn-dialog-content">
           <div className="turn-dialog-heading">
             <div>
-              <span className="eyebrow">Your turn</span>
+              <span className="eyebrow">{isReceiver ? "Gift offer" : "Your turn"}</span>
               <h2 id="turn-dialog-title">
-                {hand.length === 1 && !drawnCard
-                  ? "Draw a gift"
-                  : `Send ${drawnCard ? "the new gift" : "your oldest gift"}`}
+                {isReceiver
+                  ? "Accept or call bluff"
+                  : hand.length === 1 && !drawnCard
+                    ? "Draw a gift"
+                    : `Send ${drawnCard ? "the new gift" : "your oldest gift"}`}
               </h2>
             </div>
             <button
@@ -759,7 +717,32 @@ export default function MemoryGame({ onBack, user }) {
             </button>
           </div>
 
-          {hand.length === 1 && !drawnCard ? (
+          {isReceiver && room.pending ? (
+            <>
+              <div className="receiver-offer">
+                <span className="eyebrow">From {room.pending.fromName}</span>
+                <p>They say the gift is:</p>
+                <strong>“{room.pending.claimedName}”</strong>
+                <span className="offer-direction">
+                  {room.pending.direction === "left" ? <ArrowLeft size={15} /> : <ArrowRight size={15} />}
+                  Passed {room.pending.direction}
+                </span>
+              </div>
+              <p className="turn-dialog-copy">Accept the claim, or call bluff to reveal the gift. Accepting a false claim gives you a penalty point.</p>
+              <div className="receiver-actions">
+                <GameButton disabled={busy} onClick={() => emitAction("game:accept")}>
+                  <Check size={16} /> Accept gift
+                </GameButton>
+                <GameButton
+                  className="danger-action"
+                  disabled={busy}
+                  onClick={() => emitAction("game:challenge")}
+                >
+                  <Flag size={16} /> Call bluff
+                </GameButton>
+              </div>
+            </>
+          ) : hand.length === 1 && !drawnCard ? (
             <>
               <ObjectCard card={hand[0]} label="Your current gift" />
               <p className="turn-dialog-copy">Draw the next gift, memorize it and its arrow, then pass it.</p>

@@ -12,6 +12,7 @@ const {
   findTarget,
   createGift,
   resolvePassDirection,
+  acceptGift,
 } = require("../server/routes/memory");
 
 test("the route's card catalog is exported", () => {
@@ -147,6 +148,35 @@ test("pass direction follows the card and defaults missing either-direction choi
   assert.equal(resolvePassDirection({ direction: "right" }), "right");
   assert.equal(resolvePassDirection({ direction: "both" }, "right"), "right");
   assert.equal(resolvePassDirection({ direction: "both" }), "left");
+});
+
+test("accepting a correctly named gift adds it to the receiver's hand", () => {
+  const receiver = { userId: "p2", username: "Two", hand: [], penaltyCards: [] };
+  const room = { players: [receiver], gameLog: [], phase: "playing" };
+  const pending = {
+    card: { id: "gift-1", name: "Lamp", icon: "x", direction: "left" },
+    claimedName: "Lamp",
+    direction: "left",
+  };
+
+  assert.equal(acceptGift(room, receiver, pending, { username: "One" }), "truth");
+  assert.equal(receiver.hand[0].id, "gift-1");
+  assert.equal(receiver.penaltyCards.length, 0);
+});
+
+test("accepting a false claim awards the receiver a penalty point", () => {
+  const receiver = { userId: "p2", username: "Two", hand: [], penaltyCards: [] };
+  const room = { players: [receiver], gameLog: [], phase: "playing" };
+  const pending = {
+    card: { id: "gift-1", name: "Lamp", icon: "x", direction: "left" },
+    claimedName: "Radio",
+    direction: "left",
+  };
+
+  assert.equal(acceptGift(room, receiver, pending, { username: "One" }), "lie");
+  assert.equal(receiver.hand.length, 0);
+  assert.equal(receiver.penaltyCards[0].id, "gift-1");
+  assert.equal(room.lastReveal.penaltyPlayerId, "p2");
 });
 
 test("three penalty points end the game and retain tied lowest scorers", () => {

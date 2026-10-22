@@ -56,6 +56,7 @@ function publicState(room) {
     revealEndsAt: room.revealEndsAt,
     revealCards: room.phase === "reveal" ? room.revealCards : null,
     lastReveal: room.lastReveal,
+    gameLog: room.gameLog || [],
     notice: room.notice,
     winnerId: room.winnerId,
     winnerIds: room.winnerIds,
@@ -194,7 +195,9 @@ function beginMemoryPhase(room, startingPlayerId) {
   room.winnerId = null;
   room.winnerIds = [];
   room.currentTurnId = startingPlayerId;
+  room.gameLog = [];
   room.notice = "Memorize everyone's card and its direction.";
+  logEvent(room, `${playerById(room, startingPlayerId)?.username || "The first player"} starts the game.`, "start");
   room.revealEndsAt = Date.now() + REVEAL_MS;
   room.revealCards = room.players.map((player) => ({
     playerId: player.userId,
@@ -241,6 +244,34 @@ function awardPenalty(room, player, card) {
   return true;
 }
 
+function acceptGift(room, player, pending, giver) {
+  const card = pending.card.toObject ? pending.card.toObject() : { ...pending.card };
+  const outcome = resolveClaim(card, pending.claimedName);
+  if (outcome === "truth") {
+    player.hand.push(card);
+    player.blockedCardId = card.id;
+    room.lastReveal = null;
+    room.notice = `${player.username} accepted the correctly named gift.`;
+    logEvent(room, `${player.username} accepted ${giver?.username || "the giver"}'s correctly named gift.`, "accept");
+    return outcome;
+  }
+
+  room.lastReveal = {
+    fromName: giver?.username || "A player",
+    toName: player.username,
+    claimedName: pending.claimedName,
+    card: { name: card.name, icon: card.icon, direction: pending.direction },
+    outcome: "accepted-lie",
+  };
+  awardPenalty(room, player, card);
+  room.lastReveal.penaltyPlayerId = player.userId;
+  room.lastReveal.penaltyPlayerName = player.username;
+  room.lastReveal.penaltyCount = player.penaltyCards.length;
+  room.notice = `${player.username} accepted a false claim and receives a penalty point.`;
+  logEvent(room, `${player.username} accepted a false claim and received a penalty point (${player.penaltyCards.length}/3).`, "penalty");
+  return outcome;
+}
+
 async function broadcastRoom(room) {
   await publishRoom(roomChannel(room.code), "game:state", publicState(room));
   await Promise.all(room.players.map((player) =>
@@ -260,6 +291,11 @@ function createCode() {
 
 function sendFailure(res, status, error) {
   return res.status(status).json({ ok: false, error });
+}
+
+function logEvent(room, text, type = "event") {
+  room.gameLog.push({ text, type, createdAt: new Date() });
+  if (room.gameLog.length > 40) room.gameLog.splice(0, room.gameLog.length - 40);
 }
 
 async function saveAndReply(room, userId, res) {
@@ -432,6 +468,7 @@ router.post("/", async (req, res, next) => {
       room.revealEndsAt = Date.now() + DRAW_REVEAL_MS;
       room.lastReveal = null;
       room.notice = `${username} drew a new gift.`;
+      logEvent(room, `${username} drew a gift from the shop.`, "draw");
     } else if (eventName === "game:start") {
       if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can start");
       if (room.phase !== "lobby" && room.phase !== "finished") {
@@ -472,6 +509,7 @@ router.post("/", async (req, res, next) => {
       room.pending = { card, fromId: userId, toId: receiver.userId, claimedName: claim, direction: passDirection };
       room.lastReveal = null;
       room.notice = `${player.username} passed a card to ${receiver.username}.`;
+      logEvent(room, `${player.username} passed a gift to ${receiver.username}, claiming it was ${claim}.`, "pass");
     } else if (eventName === "game:accept" || eventName === "game:challenge") {
       if (room.phase !== "playing" || !room.pending?.card) {
         return sendFailure(res, 409, "There is no card to respond to");
@@ -482,13 +520,9 @@ router.post("/", async (req, res, next) => {
       const pending = room.pending;
       const giver = playerById(room, pending.fromId);
       if (eventName === "game:accept") {
-        player.hand.push(pending.card);
-        player.blockedCardId = pending.card.id;
-        player.lastGiftGiverId = pending.fromId;
-        room.lastReveal = null;
+        acceptGift(room, player, pending, giver);
         room.pending = undefined;
-        room.notice = `${player.username} accepted the card.`;
-        advanceTo(room, userId);
+        if (room.phase !== "finished") advanceTo(room, userId);
       } else {
         const outcome = resolveClaim(pending.card, pending.claimedName);
         room.lastReveal = {
@@ -513,6 +547,7 @@ router.post("/", async (req, res, next) => {
           room.notice = `${penalizedName} receives a penalty point.`;
           advanceTo(room, outcome === "lie" ? userId : giver.userId);
         }
+        logEvent(room, `${penalizedName} received a penalty point (${penalizedPlayer.penaltyCards.length}/3).`, "penalty");
         room.pending = undefined;
       }
     } else if (eventName === "game:leave") {
@@ -551,4 +586,5 @@ module.exports = {
   findTarget,
   beginMemoryPhase,
   awardPenalty,
+  acceptGift,
 };
