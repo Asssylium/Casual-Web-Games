@@ -4,7 +4,7 @@ const MemoryRoom = require("../models/MemoryRoom");
 const requireAuth = require("../middleware/auth");
 const { resolveClaim, CARD_CATALOG } = require("../games/memory");
 const { getRealtime, publishRoom } = require("../realtime/ably");
-const { createBot, coin } = require("../bots");
+const { createBot, coin, isBot } = require("../bots");
 
 const router = express.Router();
 const MIN_PLAYERS = 2;
@@ -45,7 +45,7 @@ function publicState(room) {
     players: room.players.map((player) => ({
       id: player.userId,
       username: player.username,
-      isBot: player.isBot,
+      isBot: isBot(player),
       eliminated: player.eliminated,
       connected: player.connected,
       cardCount: player.hand.length,
@@ -95,7 +95,7 @@ function markStalePlayers(room, now = Date.now()) {
   let changed = false;
   for (const player of room.players) {
     const lastSeenAt = player.lastSeenAt ? new Date(player.lastSeenAt).getTime() : 0;
-    if (!player.isBot && player.connected && now - lastSeenAt > PLAYER_TIMEOUT_MS) {
+    if (!isBot(player) && player.connected && now - lastSeenAt > PLAYER_TIMEOUT_MS) {
       player.connected = false;
       changed = true;
     }
@@ -301,7 +301,7 @@ function runMemoryBots(room) {
     completeReveal(room);
     if (room.phase !== "playing") return changed;
     const receiver = room.pending && playerById(room, room.pending.toId);
-    if (room.pending && receiver?.isBot) {
+    if (room.pending && isBot(receiver)) {
       const pending = room.pending;
       const giver = playerById(room, pending.fromId);
       if (coin(0.3)) {
@@ -320,7 +320,7 @@ function runMemoryBots(room) {
       continue;
     }
     const bot = playerById(room, room.currentTurnId);
-    if (!bot?.isBot || room.pending) return changed;
+    if (!isBot(bot) || room.pending) return changed;
     if (bot.hand.length === 1 && !room.drawnCard) {
       if (!room.drawPile.length) refillGiftShop(room);
       room.drawnCard = room.drawPile.shift();

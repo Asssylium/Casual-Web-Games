@@ -3,7 +3,7 @@ const express = require("express");
 const SecretHitlerRoom = require("../models/SecretHitlerRoom");
 const requireAuth = require("../middleware/auth");
 const { getRealtime, publishRoom } = require("../realtime/ably");
-const { createBot } = require("../bots");
+const { createBot, isBot } = require("../bots");
 const {
   MAX_PLAYERS,
   MIN_PLAYERS,
@@ -43,7 +43,7 @@ function roomState(room) {
 function markStalePlayers(room, now = Date.now()) {
   let changed = false;
   for (const player of room.players) {
-    if (!player.isBot && player.connected && now - new Date(player.lastSeenAt || 0).getTime() > PLAYER_TIMEOUT_MS) {
+    if (!isBot(player) && player.connected && now - new Date(player.lastSeenAt || 0).getTime() > PLAYER_TIMEOUT_MS) {
       player.connected = false;
       changed = true;
     }
@@ -62,22 +62,22 @@ function runBots(room) {
     const president = findPlayer(room, room.presidentId);
     const chancellor = findPlayer(room, room.chancellorId);
     try {
-      if (room.phase === "election" && president?.isBot) {
+      if (room.phase === "election" && isBot(president)) {
         const candidate = choose(eligibleChancellors(room), 0.45);
         if (!candidate) return;
         applyAction(room, president.userId, "nominate", { candidateId: candidate.userId });
       } else if (room.phase === "voting") {
-        const bot = room.players.find((player) => player.alive !== false && player.isBot && !Object.hasOwn(room.ballots, player.userId));
+        const bot = room.players.find((player) => player.alive !== false && isBot(player) && !Object.hasOwn(room.ballots, player.userId));
         if (!bot) return;
         applyAction(room, bot.userId, "vote", { ja: coin() });
-      } else if (room.phase === "legislative-president" && president?.isBot) {
+      } else if (room.phase === "legislative-president" && isBot(president)) {
         applyAction(room, president.userId, "president-discard", { index: choose([0, 1, 2], 0.5) });
-      } else if (room.phase === "legislative-chancellor" && chancellor?.isBot) {
+      } else if (room.phase === "legislative-chancellor" && isBot(chancellor)) {
         if (room.fascistPolicies >= 5 && coin(0.18)) applyAction(room, chancellor.userId, "veto-request");
         else applyAction(room, chancellor.userId, "chancellor-enact", { index: choose([0, 1], 0.5) });
-      } else if (room.phase === "veto-response" && president?.isBot) {
+      } else if (room.phase === "veto-response" && isBot(president)) {
         applyAction(room, president.userId, "veto-response", { agree: coin(0.45) });
-      } else if (room.phase === "executive" && president?.isBot) {
+      } else if (room.phase === "executive" && isBot(president)) {
         if (room.power === "policy-peek") applyAction(room, president.userId, "policy-peek");
         else {
           const targets = room.players.filter((player) => player.alive !== false && player.userId !== president.userId && (room.power !== "investigate" || !room.investigatedPlayerIds.includes(player.userId)));

@@ -15,7 +15,7 @@ function createBot(existingPlayers) {
 }
 
 function isBot(player) {
-  return Boolean(player?.isBot);
+  return Boolean(player?.isBot || player?.userId?.startsWith("bot:"));
 }
 
 function choose(items, mistakeRate = 0.2) {
