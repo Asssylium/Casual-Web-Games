@@ -39,7 +39,9 @@ Run `npm run build` to compile the React app into `dist/`, then start the API an
 
 Keep the Vercel project root set to the repository root, not `client/`. The root `vercel.json` builds `client/` into `dist/` and rewrites `/api/*` to the Node function at `api/index.js`. Configure `MONGO_URI`, `SESSION_SECRET` (at least 32 random characters), and `GOOGLE_CLIENT_ID` in Vercel's Production environment, then redeploy. Do not set `PORT` to a database or server URL; Vercel manages function ports. Add the deployed site origin to the Google OAuth client's authorized JavaScript origins.
 
-Vercel Functions do not provide the persistent Socket.IO server required for live Memory Pass rooms. The authentication API can run on Vercel, but multiplayer needs a separately hosted, long-running Node service and a matching Socket.IO client URL.
+Vercel Functions do not provide the persistent Socket.IO server required for live Memory Pass rooms. The authentication API can run on Vercel, but multiplayer needs a separately hosted, long-running Node service. Set `VITE_SOCKET_URL` in Vercel to that service's HTTPS origin (for example, `https://game.example.com`) and redeploy. Set `CLIENT_ORIGIN` on the game server to the exact frontend origin (for example, `https://casual.example.com`).
+
+Socket authentication uses the same MongoDB-backed session as the API. To share its cookie across the frontend and game server, use custom domains under the same parent domain (for example, `casual.example.com` and `game.example.com`) and set `COOKIE_DOMAIN=.example.com` on both deployments. The game server also needs the same `MONGO_URI` and `SESSION_SECRET`. A Vercel `*.vercel.app` frontend and a separately hosted game server on an unrelated domain cannot share this cookie; use a custom domain or implement token-based socket authentication instead.
 
 ## Authentication API
 

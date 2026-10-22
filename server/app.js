@@ -39,6 +39,7 @@ const sessionMiddleware = session({
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
+    ...(process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
     maxAge: 1000 * 60 * 60 * 24 * 7,
     path: "/",
   },

@@ -190,7 +190,10 @@ export default function MemoryGame({ onBack, user }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const client = io({ autoConnect: false, withCredentials: true });
+    const client = io(import.meta.env.VITE_SOCKET_URL || undefined, {
+      autoConnect: false,
+      withCredentials: true,
+    });
     setSocket(client);
 
     client.on("connect", () => {

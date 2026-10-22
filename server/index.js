@@ -17,7 +17,11 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 async function start() {
   await connectDatabase();
   const server = http.createServer(app);
-  const io = new SocketServer(server);
+  const io = new SocketServer(server, {
+    cors: process.env.CLIENT_ORIGIN
+      ? { origin: process.env.CLIENT_ORIGIN, credentials: true }
+      : undefined,
+  });
   io.engine.use(sessionMiddleware);
   io.use(async (socket, next) => {
     try {
