@@ -125,6 +125,9 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .join-room-form .field { margin-bottom: 10px; }
 .join-room-form input, .claim-field input { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #ffffff24; border-radius: 9px; outline: none; background: #0c1220; color: white; }
 .join-room-form input:focus, .claim-field input:focus { border-color: #a78bfa; }
+.starting-player-field { max-width: 360px; margin: 0; }
+.starting-player-field select { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #ffffff24; border-radius: 9px; outline: none; background: #0c1220; color: white; }
+.starting-player-field select:focus { border-color: #a78bfa; }
 .game-room { display: grid; gap: 20px; padding: clamp(20px, 3vw, 32px); }
 .room-toolbar { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--game-line, #ffffff18); }
 .cancel-game-button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #fb718540; border-radius: 8px; background: #fb718510; color: #fda4af; font-size: .76rem; }
@@ -133,6 +136,7 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .copy-room-code { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; padding: 7px 10px; border: 1px solid var(--game-line, #ffffff20); border-radius: 8px; background: #ffffff06; color: #cbd5e1; font-size: .76rem; }
 .copy-room-code:hover { border-color: #a78bfa80; color: #c4b5fd; }
 .round-label { padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 999px; color: #cbd5e1; font-size: .76rem; }
+.gift-shop-count { color: #9ba7bc; font-size: .78rem; }
 .lobby-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); gap: 18px; align-items: stretch; }
 .lobby-panel { display: grid; align-content: start; gap: 20px; padding: 24px; border: 1px solid var(--game-line, #ffffff18); border-radius: 13px; background: #ffffff04; }
 .lobby-aside { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 300px; padding: clamp(22px, 3vw, 36px); border: 1px solid #a78bfa30; border-radius: 13px; background: radial-gradient(ellipse at 78% 20%, #a78bfa13, transparent 42%), #a78bfa08; }
@@ -156,6 +160,9 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .room-lobby-notice, .room-status-line { color: #9ba7bc; font-size: .82rem; }
 .room-status-line { padding: 10px 12px; border-left: 2px solid #a78bfa; background: #a78bfa0c; }
 .memory-reveal { display: grid; gap: 18px; }
+.gift-reveal { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 20px; border: 1px solid #fbbf2440; border-radius: 12px; background: #fbbf240b; }
+.gift-reveal h2 { margin: 7px 0 0; font-size: 1.25rem; }
+.gift-reveal p { flex-basis: 100%; margin: 0; color: #9ba7bc; font-size: .84rem; }
 .reveal-heading, .turn-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .reveal-countdown { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #fbbf2466; border-radius: 50%; color: #fcd34d; font-size: 1.1rem; }
 .reveal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

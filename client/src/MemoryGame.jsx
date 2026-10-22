@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 
 function directionText(direction) {
-  if (direction === "both") return "Left or right";
   return direction === "left" ? "Pass left" : "Pass right";
 }
 
@@ -57,7 +56,7 @@ function PlayerList({ players, currentTurnId, userId }) {
             {player.username}{player.id === userId ? " (you)" : ""}
           </span>
           <span className="seat-cards">
-            {player.eliminated ? "Out" : `${player.cardCount} cards`}
+            {`${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.penaltyCount || 0} pt`}
           </span>
           {player.id === currentTurnId && <span className="turn-indicator">Turn</span>}
           {!player.connected && !player.eliminated && <span className="seat-offline">Offline</span>}
@@ -128,7 +127,7 @@ function PlayerOrbit({ room, userId, revealCards = null, selectedDirection = "" 
               </div>
             ) : (
               <span className="orbit-card-count">
-                {player.eliminated ? "Out" : `${player.cardCount} ${player.cardCount === 1 ? "card" : "cards"}`}
+                {player.eliminated ? "Out" : `${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.penaltyCount || 0} pt`}
               </span>
             )}
             {isTarget && (
@@ -149,27 +148,20 @@ function PlayerOrbit({ room, userId, revealCards = null, selectedDirection = "" 
   );
 }
 
-function ObjectCard({ card, selected, onClick, locked = false }) {
+function ObjectCard({ card, label = "", locked = false }) {
   const content = (
     <>
       <span className="object-icon" aria-hidden="true">{card.icon}</span>
       <strong>{card.name}</strong>
       <span className="object-direction">{directionText(card.direction)}</span>
-      {locked && <span className="locked-card-label">Just received</span>}
+      {label && <span className="locked-card-label">{label}</span>}
     </>
   );
 
   return (
-    <button
-      aria-label={`${card.name}, ${locked ? "just received, cannot pass this turn" : directionText(card.direction)}`}
-      aria-pressed={!locked && selected}
-      className={`object-card${selected ? " object-card-selected" : ""}${locked ? " object-card-locked" : ""}`}
-      disabled={locked}
-      onClick={onClick}
-      type="button"
-    >
+    <div aria-label={`${card.name}, ${label || directionText(card.direction)}`} className={`object-card${locked ? " object-card-locked" : ""}`} role="group">
       {content}
-    </button>
+    </div>
   );
 }
 
@@ -179,10 +171,9 @@ export default function MemoryGame({ onBack, user }) {
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
   const [hand, setHand] = useState([]);
-  const [blockedCardId, setBlockedCardId] = useState(null);
+  const [drawnCard, setDrawnCard] = useState(null);
   const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [selectedCardId, setSelectedCardId] = useState("");
-  const [passDirection, setPassDirection] = useState("");
+  const [startingPlayerId, setStartingPlayerId] = useState(user.id);
   const [claimedName, setClaimedName] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -192,7 +183,7 @@ export default function MemoryGame({ onBack, user }) {
   function applyGameState(result) {
     setRoom(result.room || null);
     setHand(result.hand?.cards || []);
-    setBlockedCardId(result.hand?.blockedCardId || null);
+    setDrawnCard(result.hand?.drawnCard || null);
   }
 
   async function loadGameState() {
@@ -276,15 +267,13 @@ export default function MemoryGame({ onBack, user }) {
     const subscribeToHand = privateHandChannel.subscribe("game:hand", (message) => {
       if (!active) return;
       setHand(message.data.cards || []);
-      setBlockedCardId(message.data.blockedCardId || null);
-      setSelectedCardId("");
-      setPassDirection("");
+      setDrawnCard(message.data.drawnCard || null);
     });
     const subscribeToCancellation = stateChannel.subscribe("game:cancelled", (message) => {
       if (!active || message.data.cancelledBy === user.id) return;
       setRoom(null);
       setHand([]);
-      setBlockedCardId(null);
+      setDrawnCard(null);
       setError("The host cancelled the game.");
     });
     void Promise.all([subscribeToRoom, subscribeToHand, subscribeToCancellation]).catch((connectionError) => {
@@ -310,7 +299,7 @@ export default function MemoryGame({ onBack, user }) {
   }, [connected, room?.code]);
 
   useEffect(() => {
-    if (room?.phase !== "reveal" || !room.revealEndsAt) {
+    if (!room || !["reveal", "gift-reveal"].includes(room.phase) || !room.revealEndsAt) {
       setSecondsLeft(0);
       return undefined;
     }
@@ -324,14 +313,19 @@ export default function MemoryGame({ onBack, user }) {
   }, [room?.phase, room?.revealEndsAt]);
 
   useEffect(() => {
-    if (room?.phase !== "reveal" || !room.revealEndsAt) return undefined;
+    if (
+      !room ||
+      !["reveal", "gift-reveal"].includes(room.phase) ||
+      !room.revealEndsAt ||
+      room.currentTurnId !== user.id
+    ) return undefined;
     const timer = window.setTimeout(() => {
       void loadGameState().catch((refreshError) => {
         setError(refreshError.message || "Could not refresh the game");
       });
     }, Math.max(0, room.revealEndsAt - Date.now()) + 100);
     return () => window.clearTimeout(timer);
-  }, [room?.phase, room?.revealEndsAt]);
+  }, [room?.phase, room?.revealEndsAt, room?.currentTurnId, user.id]);
 
   function emitAction(eventName, payload = {}, onSuccess) {
     if (!initialized || !connected) {
@@ -361,7 +355,7 @@ export default function MemoryGame({ onBack, user }) {
     } finally {
       setRoom(null);
       setHand([]);
-      setBlockedCardId(null);
+      setDrawnCard(null);
       setBusy(false);
       onBack();
     }
@@ -381,17 +375,12 @@ export default function MemoryGame({ onBack, user }) {
     }
   }
 
-  function selectCard(card) {
-    setSelectedCardId(card.id);
-    setPassDirection(card.direction === "both" ? "" : card.direction);
+  function passGift() {
+    emitAction("game:pass", { claimedName }, () => setClaimedName(""));
   }
 
-  function passSelectedCard() {
-    emitAction("game:pass", {
-      cardId: selectedCardId,
-      direction: passDirection,
-      claimedName,
-    });
+  function startGame() {
+    emitAction("game:start", { startingPlayerId });
   }
 
   async function copyRoomCode() {
@@ -408,7 +397,6 @@ export default function MemoryGame({ onBack, user }) {
   const isHost = room?.hostId === user.id;
   const isMyTurn = room?.currentTurnId === user.id;
   const isReceiver = room?.pending?.toId === user.id;
-  const selectedCard = hand.find((card) => card.id === selectedCardId);
   const canLeaveRoom = !room || room.phase === "lobby" || room.phase === "finished";
 
   return (
@@ -470,9 +458,9 @@ export default function MemoryGame({ onBack, user }) {
               </GameButton>
             </form>
             <div className="quick-rules">
-              <span><Eye size={15} /> Memorize the reveal</span>
-              <span><ArrowRight size={15} /> Pass in the shown direction</span>
-              <span><Flag size={15} /> Last player standing wins</span>
+              <span><Eye size={15} /> Memorize each revealed gift</span>
+              <span><ArrowRight size={15} /> Pass the oldest gift by its arrow</span>
+              <span><Flag size={15} /> Fewest points wins at three</span>
             </div>
           </div>
         </div>
@@ -482,6 +470,9 @@ export default function MemoryGame({ onBack, user }) {
             <span className="round-label">
               {room.phase === "lobby" ? "Lobby" : `Round ${room.round}`}
             </span>
+            {room.phase !== "lobby" && (
+              <span className="gift-shop-count">Gift shop · {room.giftShopCount}</span>
+            )}
             {isHost && (
               <button className="cancel-game-button" disabled={busy} onClick={cancelGame} type="button">
                 <X aria-hidden="true" size={15} /> Cancel game
@@ -509,12 +500,25 @@ export default function MemoryGame({ onBack, user }) {
                 </div>
                 <PlayerList players={room.players} userId={user.id} />
                 {isHost && (
-                  <GameButton
-                    disabled={busy || room.players.filter((player) => player.connected).length < 2}
-                    onClick={() => emitAction("game:start")}
-                  >
-                    Deal the cards <ArrowRight size={16} />
-                  </GameButton>
+                  <>
+                    <label className="field starting-player-field">
+                      <span>First player</span>
+                      <select
+                        onChange={(event) => setStartingPlayerId(event.target.value)}
+                        value={startingPlayerId}
+                      >
+                        {room.players.filter((player) => player.connected).map((player) => (
+                          <option key={player.id} value={player.id}>{player.username}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <GameButton
+                      disabled={busy || room.players.filter((player) => player.connected).length < 2}
+                      onClick={startGame}
+                    >
+                      Deal the cards <ArrowRight size={16} />
+                    </GameButton>
+                  </>
                 )}
                 {!isHost && <p className="muted">The host can deal once both players are connected.</p>}
               </section>
@@ -523,7 +527,7 @@ export default function MemoryGame({ onBack, user }) {
                 <span className="eyebrow">How this table plays</span>
                 <h3>Remember what you see.</h3>
                 <p>Cards stay hidden after the reveal. Pass one to the indicated neighbor and name it. They decide to accept or call your bluff.</p>
-                <div className="lobby-aside-note"><Sparkles size={15} /> A caught lie sends the giver out.</div>
+                <div className="lobby-aside-note"><Sparkles size={15} /> Three penalty points end the game.</div>
               </aside>
             </div>
           )}
@@ -548,17 +552,35 @@ export default function MemoryGame({ onBack, user }) {
                 </section>
               )}
 
+              {room.phase === "gift-reveal" && room.revealedGift && (
+                <section className="gift-reveal" aria-live="polite">
+                  <div>
+                    <span className="eyebrow">New gift from the shop</span>
+                    <h2>{room.players.find((player) => player.id === room.drawnBy)?.username} drew a gift</h2>
+                  </div>
+                  <ObjectCard card={room.revealedGift} label={directionText(room.revealedGift.direction)} />
+                  <p>Remember the gift and its arrow. Passing begins in {secondsLeft}s.</p>
+                </section>
+              )}
+
               {room.phase === "playing" && (
                 <div className="playing-layout">
                   <section className="turn-panel">
                     <div className="turn-panel-heading">
                       <div>
                         <span className="eyebrow">{isMyTurn ? "Your turn" : "Table"}</span>
-                        <h2>{isMyTurn ? "Choose a card to pass" : "Watch the pass"}</h2>
+                        <h2>
+                          {isMyTurn
+                            ? drawnCard
+                              ? "Pass the new gift"
+                              : hand.length > 1
+                                ? "Pass your oldest gift"
+                                : "Draw a new gift"
+                            : "Watch the pass"}
+                        </h2>
                       </div>
                       <span className="hand-count">
-                        {hand.length} cards
-                        {blockedCardId && hand.length > 1 && ` · ${hand.length - 1} passable`}
+                        {hand.length + (drawnCard ? 1 : 0)} gifts · {currentUser?.penaltyCount || 0} points
                       </span>
                     </div>
 
@@ -587,38 +609,25 @@ export default function MemoryGame({ onBack, user }) {
                     ) : isMyTurn ? (
                       <>
                         <div className="hand-cards">
-                          {hand.map((card) => (
+                          {hand.map((card, index) => (
                             <ObjectCard
                               card={card}
                               key={card.id}
-                              locked={card.id === blockedCardId && hand.length > 1}
-                              onClick={() => selectCard(card)}
-                              selected={selectedCardId === card.id}
+                              label={hand.length > 1 && index === 0 ? "Oldest · pass next" : "Your gift"}
+                              locked={hand.length > 1 && index > 0}
                             />
                           ))}
+                          {drawnCard && <ObjectCard card={drawnCard} label="New gift · pass this" />}
                         </div>
-                        {selectedCard && (
+                        {hand.length === 1 && !drawnCard && (
                           <div className="pass-controls">
-                            {selectedCard.direction === "both" && (
-                              <div className="direction-options" role="group" aria-label="Pass direction">
-                                <button
-                                  aria-pressed={passDirection === "left"}
-                                  className="direction-option"
-                                  onClick={() => setPassDirection("left")}
-                                  type="button"
-                                >
-                                  ← Left
-                                </button>
-                                <button
-                                  aria-pressed={passDirection === "right"}
-                                  className="direction-option"
-                                  onClick={() => setPassDirection("right")}
-                                  type="button"
-                                >
-                                  Right →
-                                </button>
-                              </div>
-                            )}
+                            <GameButton disabled={busy} onClick={() => emitAction("game:draw")}>
+                              <Sparkles size={16} /> Draw from gift shop
+                            </GameButton>
+                          </div>
+                        )}
+                        {(hand.length > 1 || drawnCard) && (
+                          <div className="pass-controls">
                             <label className="field claim-field">
                               <span>What are you claiming the card is?</span>
                               <input
@@ -630,10 +639,10 @@ export default function MemoryGame({ onBack, user }) {
                               />
                             </label>
                             <GameButton
-                              disabled={busy || !claimedName || (selectedCard.direction === "both" && !passDirection)}
-                              onClick={passSelectedCard}
+                              disabled={busy || !claimedName.trim()}
+                              onClick={passGift}
                             >
-                              Pass {passDirection || selectedCard.direction}
+                              Pass {directionText((drawnCard || hand[0]).direction).replace("Pass ", "")}
                               <ArrowRight size={16} />
                             </GameButton>
                           </div>
@@ -658,7 +667,6 @@ export default function MemoryGame({ onBack, user }) {
                     <PlayerOrbit
                       players={room.players}
                       room={room}
-                      selectedDirection={passDirection}
                       userId={user.id}
                     />
                   </aside>
@@ -673,10 +681,9 @@ export default function MemoryGame({ onBack, user }) {
                       {room.lastReveal.fromName} passed {room.lastReveal.card.name}, saying “{room.lastReveal.claimedName}”.
                     </strong>
                     <p>
-                      {room.lastReveal.outcome === "lie"
-                        ? `${room.lastReveal.toName} caught the lie. The giver is out.`
-                        : `${room.lastReveal.toName} called it wrong. The receiver is out.`}
-                      {` The card points ${room.lastReveal.card.direction === "both" ? "both ways" : room.lastReveal.card.direction}.`}
+                      {room.lastReveal.penaltyPlayerName} receives a penalty point
+                      {room.lastReveal.penaltyCount ? ` (${room.lastReveal.penaltyCount}/3)` : ""}.
+                      {` The card points ${room.lastReveal.card.direction}.`}
                     </p>
                   </div>
                 </section>
@@ -685,10 +692,16 @@ export default function MemoryGame({ onBack, user }) {
               {room.phase === "finished" && (
                 <section className="winner-panel">
                   <span className="eyebrow">Game over</span>
-                  <h2>{room.players.find((player) => player.id === room.winnerId)?.username || "No winner"} wins</h2>
+                  <h2>
+                    {(room.winnerIds || []).map((winnerId) =>
+                      room.players.find((player) => player.id === winnerId)?.username
+                    ).filter(Boolean).join(" and ") || "No winner"}
+                    {(room.winnerIds || []).length > 1 ? " tie" : " wins"}
+                  </h2>
+                  <p className="muted">The player with the fewest penalty points wins.</p>
                   {isHost && (
-                    <GameButton disabled={busy} onClick={() => emitAction("game:start")}>
-                      Play another round
+                    <GameButton disabled={busy} onClick={startGame}>
+                      Start a new game
                     </GameButton>
                   )}
                   {!isHost && <p className="muted">The host can start another round.</p>}

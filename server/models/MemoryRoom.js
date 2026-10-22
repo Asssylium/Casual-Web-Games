@@ -18,6 +18,7 @@ const playerSchema = new mongoose.Schema(
     lastSeenAt: { type: Date, default: Date.now },
     eliminated: { type: Boolean, default: false },
     hand: { type: [cardSchema], default: [] },
+    penaltyCards: { type: [cardSchema], default: [] },
     blockedCardId: { type: String, default: null },
   },
   { _id: false }
@@ -28,8 +29,12 @@ const memoryRoomSchema = new mongoose.Schema(
     code: { type: String, required: true, unique: true },
     hostId: { type: String, required: true },
     players: { type: [playerSchema], default: [] },
-    phase: { type: String, enum: ["lobby", "reveal", "playing", "finished"], required: true },
+    phase: { type: String, enum: ["lobby", "reveal", "gift-reveal", "playing", "finished"], required: true },
     round: { type: Number, default: 1 },
+    drawPile: { type: [cardSchema], default: [] },
+    drawnCard: { type: cardSchema, default: undefined },
+    drawnBy: { type: String, default: null },
+    startingPlayerId: { type: String, default: null },
     currentTurnId: { type: String, default: null },
     pending: {
       card: { type: cardSchema, default: undefined },
@@ -43,6 +48,7 @@ const memoryRoomSchema = new mongoose.Schema(
     lastReveal: { type: mongoose.Schema.Types.Mixed, default: null },
     notice: { type: String, default: "" },
     winnerId: { type: String, default: null },
+    winnerIds: { type: [String], default: [] },
   },
   { timestamps: true, optimisticConcurrency: true }
 );
