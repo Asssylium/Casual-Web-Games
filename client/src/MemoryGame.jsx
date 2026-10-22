@@ -423,6 +423,13 @@ export default function MemoryGame({ onBack, user }) {
   const isMyTurn = room?.currentTurnId === user.id;
   const isReceiver = room?.pending?.toId === user.id;
   const giftToPassNow = drawnCard || (hand.length > 1 ? hand[0] : null);
+  const selectedPassDirection = giftToPassNow?.direction === "both"
+    ? passDirection
+    : giftToPassNow?.direction;
+  const recipientId = room && selectedPassDirection
+    ? findPassTarget(room.players, user.id, selectedPassDirection)
+    : null;
+  const recipient = room?.players.find((player) => player.id === recipientId);
   const shouldOpenTurnDialog = Boolean(
     room?.phase === "playing" && ((isMyTurn && !room.pending) || isReceiver)
   );
@@ -605,24 +612,34 @@ export default function MemoryGame({ onBack, user }) {
 
               {room.phase === "playing" && (
                 <div className="playing-layout">
-                  <section aria-label="Game log" className="game-log-panel">
-                    <div className="game-log-heading">
-                      <div>
-                        <span className="eyebrow">Round {room.round}</span>
-                        <h2>Game log</h2>
+                  <div className="table-log-column">
+                    <aside className="table-panel">
+                      <span className="eyebrow">At the table</span>
+                      <PlayerOrbit
+                        players={room.players}
+                        room={room}
+                        userId={user.id}
+                      />
+                    </aside>
+                    <section aria-label="Game log" className="game-log-panel">
+                      <div className="game-log-heading">
+                        <div>
+                          <span className="eyebrow">Round {room.round}</span>
+                          <h2>Game log</h2>
+                        </div>
+                        <span className="gift-shop-count">Shop · {room.giftShopCount}</span>
                       </div>
-                      <span className="gift-shop-count">Shop · {room.giftShopCount}</span>
-                    </div>
-                    <ol aria-live="polite" className="game-log-list">
-                      {[...(room.gameLog || [])].reverse().map((entry, index) => (
-                        <li className={`game-log-entry game-log-${entry.type || "event"}`} key={`${entry.createdAt}-${index}`}>
-                          <span aria-hidden="true" className="game-log-marker" />
-                          <span>{entry.text}</span>
-                        </li>
-                      ))}
-                      {!room.gameLog?.length && <li className="game-log-empty">The game log will appear here.</li>}
-                    </ol>
-                  </section>
+                      <ol aria-live="polite" className="game-log-list">
+                        {[...(room.gameLog || [])].reverse().map((entry, index) => (
+                          <li className={`game-log-entry game-log-${entry.type || "event"}`} key={`${entry.createdAt}-${index}`}>
+                            <span aria-hidden="true" className="game-log-marker" />
+                            <span>{entry.text}</span>
+                          </li>
+                        ))}
+                        {!room.gameLog?.length && <li className="game-log-empty">The game log will appear here.</li>}
+                      </ol>
+                    </section>
+                  </div>
 
                   <section aria-label="Your gifts" className="player-hand-panel">
                     <div className="game-log-heading">
@@ -759,6 +776,13 @@ export default function MemoryGame({ onBack, user }) {
                   label={drawnCard ? "Just drawn" : "Oldest gift"}
                 />
                 <p>{directionText(giftToPassNow.direction)}</p>
+                <p className="recipient-preview" aria-live="polite">
+                  {recipient
+                    ? `Passing to ${recipient.username}`
+                    : giftToPassNow.direction === "both" && !passDirection
+                      ? "Choose a direction to see the recipient"
+                      : `No connected player ${selectedPassDirection === "left" ? "to the left" : "to the right"}`}
+                </p>
               </div>
               {giftToPassNow.direction === "both" && (
                 <div className="direction-options" role="group" aria-label="Choose pass direction">
@@ -792,7 +816,7 @@ export default function MemoryGame({ onBack, user }) {
                 />
               </label>
               <GameButton
-                disabled={busy || !claimedName.trim() || (giftToPassNow.direction === "both" && !passDirection)}
+                disabled={busy || !recipient || !claimedName.trim() || (giftToPassNow.direction === "both" && !passDirection)}
                 onClick={passGift}
               >
                 Send gift {passDirection || giftToPassNow.direction}
