@@ -211,20 +211,9 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .player-orbit-two .orbit-center { transform: translate(-50%, -50%) scale(.85); }
 .playing-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 .live-table-panel { display: grid; gap: 10px; min-width: 0; padding: 16px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
-.live-table-panel .game-log-heading { padding: 0 4px; }
+.live-table-panel .live-table-heading { padding: 0 4px; }
 .live-table-panel .table-panel { order: 0; }
 .live-table-panel .player-orbit { width: 100%; min-height: clamp(340px, 52vh, 580px); border-radius: 20px; }
-.game-log-panel { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 18px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
-.game-log-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.game-log-heading h2 { margin: 5px 0 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.15rem; }
-.game-log-list { display: grid; align-content: start; gap: 0; max-height: min(30vh, 260px); overflow-y: auto; padding: 0; margin: 0; list-style: none; }
-.game-log-entry { display: grid; grid-template-columns: 8px minmax(0, 1fr); align-items: baseline; gap: 10px; padding: 11px 2px; border-bottom: 1px solid #ffffff10; color: #cbd5e1; font-size: .84rem; line-height: 1.45; }
-.game-log-marker { width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; }
-.game-log-draw .game-log-marker { background: #38bdf8; }
-.game-log-pass .game-log-marker { background: #a78bfa; }
-.game-log-penalty .game-log-marker { background: #fb7185; }
-.game-log-start .game-log-marker { background: #34d399; }
-.game-log-empty { padding: 12px 0; color: #9ba7bc; font-size: .84rem; }
 .turn-reopen-button { justify-self: center; min-width: 190px; }
 .turn-panel, .table-panel, .winner-panel { padding: 20px; border: 1px solid #ffffff18; border-radius: 13px; background: #0c1220; }
 .turn-panel-heading { margin-bottom: 18px; }

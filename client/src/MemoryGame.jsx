@@ -654,7 +654,7 @@ export default function MemoryGame({ onBack, user }) {
               {room.phase === "playing" && (
                 <div className="playing-layout">
                   <section aria-label="Players at the table" className="live-table-panel">
-                    <div className="game-log-heading">
+                    <div className="live-table-heading">
                       <div>
                         <span className="eyebrow">Round {room.round}</span>
                         <h2>The table</h2>
@@ -676,27 +676,6 @@ export default function MemoryGame({ onBack, user }) {
                       </GameButton>
                     )}
                   </section>
-                  <div className="game-info-layout">
-                    <section aria-label="Game log" className="game-log-panel">
-                      <div className="game-log-heading">
-                        <div>
-                          <span className="eyebrow">Round {room.round}</span>
-                          <h2>Game log</h2>
-                        </div>
-                        <span className="gift-shop-count">Shop · {room.giftShopCount}</span>
-                      </div>
-                      <ol aria-live="polite" className="game-log-list">
-                        {[...(room.gameLog || [])].reverse().map((entry, index) => (
-                          <li className={`game-log-entry game-log-${entry.type || "event"}`} key={`${entry.createdAt}-${index}`}>
-                            <span aria-hidden="true" className="game-log-marker" />
-                            <span>{entry.text}</span>
-                          </li>
-                        ))}
-                        {!room.gameLog?.length && <li className="game-log-empty">The game log will appear here.</li>}
-                      </ol>
-                    </section>
-
-                  </div>
                 </div>
               )}
 

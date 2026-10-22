@@ -58,7 +58,6 @@ function publicState(room) {
     revealEndsAt: room.revealEndsAt,
     revealCards: room.phase === "reveal" ? room.revealCards : null,
     lastReveal: room.lastReveal,
-    gameLog: room.gameLog || [],
     notice: room.notice,
     winnerId: room.winnerId,
     winnerIds: room.winnerIds,
@@ -221,9 +220,7 @@ function beginMemoryPhase(room, startingPlayerId) {
   room.winnerId = null;
   room.winnerIds = [];
   room.currentTurnId = startingPlayerId;
-  room.gameLog = [];
   room.notice = "Memorize everyone's card and its direction.";
-  logEvent(room, `${playerById(room, startingPlayerId)?.username || "The first player"} starts the game.`, "start");
   room.revealEndsAt = Date.now() + REVEAL_MS;
   room.revealCards = room.players.map((player) => ({
     playerId: player.userId,
@@ -278,7 +275,6 @@ function acceptGift(room, player, pending, giver) {
     player.blockedCardId = card.id;
     room.lastReveal = null;
     room.notice = `${player.username} accepted the correctly named gift.`;
-    logEvent(room, `${player.username} accepted ${giver?.username || "the giver"}'s correctly named gift.`, "accept");
     return outcome;
   }
 
@@ -294,7 +290,6 @@ function acceptGift(room, player, pending, giver) {
   room.lastReveal.penaltyPlayerName = player.username;
   room.lastReveal.penaltyCount = player.penaltyCards.length;
   room.notice = `${player.username} accepted a false claim and receives a penalty point.`;
-  logEvent(room, `${player.username} accepted ${giver?.username || "the giver"}'s false claim. The gift was ${card.name}; penalty ${player.penaltyCards.length}/3.`, "penalty");
   return outcome;
 }
 
@@ -317,11 +312,6 @@ function createCode() {
 
 function sendFailure(res, status, error) {
   return res.status(status).json({ ok: false, error });
-}
-
-function logEvent(room, text, type = "event") {
-  room.gameLog.push({ text, type, createdAt: new Date() });
-  if (room.gameLog.length > 40) room.gameLog.splice(0, room.gameLog.length - 40);
 }
 
 async function saveAndReply(room, userId, res) {
@@ -495,7 +485,6 @@ router.post("/", async (req, res, next) => {
       room.revealEndsAt = Date.now() + DRAW_REVEAL_MS;
       room.lastReveal = null;
       room.notice = `${username} drew a new gift.`;
-      logEvent(room, `${username} drew a gift from the shop.`, "draw");
     } else if (eventName === "game:start") {
       if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can start");
       if (room.phase !== "lobby" && room.phase !== "finished") {
@@ -536,7 +525,6 @@ router.post("/", async (req, res, next) => {
       room.pending = { card, fromId: userId, toId: receiver.userId, claimedName: claim, direction: passDirection };
       room.lastReveal = null;
       room.notice = `${player.username} passed a card to ${receiver.username}.`;
-      logEvent(room, `${player.username} passed a gift ${passDirection} to ${receiver.username}, claiming it was ${claim}.`, "pass");
     } else if (eventName === "game:accept" || eventName === "game:challenge") {
       if (room.phase !== "playing" || !room.pending?.card) {
         return sendFailure(res, 409, "There is no card to respond to");
@@ -574,14 +562,6 @@ router.post("/", async (req, res, next) => {
           room.notice = `${penalizedName} receives a penalty point.`;
           advanceTo(room, outcome === "lie" ? userId : giver.userId);
         }
-        const callResult = outcome === "truth"
-          ? `${player.username} called bluff incorrectly: ${giver?.username || "The giver"}'s claim "${pending.claimedName}" matched ${pending.card.name} (case-insensitive).`
-          : `${player.username} called bluff correctly: "${pending.claimedName}" did not match ${pending.card.name}.`;
-        logEvent(
-          room,
-          `${callResult} ${penalizedName} received a penalty point (${penalizedPlayer.penaltyCards.length}/3).`,
-          "penalty"
-        );
         room.pending = undefined;
       }
     } else if (eventName === "game:leave") {
