@@ -12,6 +12,7 @@ const REVEAL_MS = 12_000;
 const DRAW_REVEAL_MS = 5_000;
 const PLAYER_TIMEOUT_MS = 45_000;
 const PENALTY_LIMIT = 3;
+const GIFT_DIRECTIONS = ["left", "right", "both"];
 const ROOM_CODE_LENGTH = 5;
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -145,15 +146,37 @@ function shuffle(items) {
   return shuffled;
 }
 
-function createGift(card) {
+function createGift(card, directionIndex = crypto.randomInt(GIFT_DIRECTIONS.length)) {
   return {
     ...card,
     id: crypto.randomUUID(),
+    direction: GIFT_DIRECTIONS[directionIndex],
   };
 }
 
+function createGiftDeck(cycle = 0) {
+  return CARD_CATALOG.map((card) => {
+    const variant = cycle === 0
+      ? card
+      : {
+          ...card,
+          name: `${card.name} ${cycle + 1}`,
+          icon: `${card.icon}${"✨".repeat(Math.min(cycle, 3))}${cycle > 3 ? cycle : ""}`,
+        };
+    return createGift(variant);
+  });
+}
+
 function refillGiftShop(room) {
-  room.drawPile = shuffle(CARD_CATALOG).map(createGift);
+  const usedNames = new Set(room.usedGiftNames || []);
+  const unusedCards = CARD_CATALOG.filter((card) => !usedNames.has(card.name));
+  if (unusedCards.length) {
+    room.drawPile = shuffle(unusedCards.map((card) => createGift(card)));
+    return;
+  }
+
+  room.giftShopRefills = (room.giftShopRefills || 0) + 1;
+  room.drawPile = shuffle(createGiftDeck(room.giftShopRefills));
 }
 
 function giftToPass(room, player, userId) {
@@ -178,7 +201,7 @@ function resolvePassDirection(card, requestedDirection) {
 }
 
 function beginMemoryPhase(room, startingPlayerId) {
-  const gifts = shuffle(CARD_CATALOG).map(createGift);
+  const gifts = shuffle(createGiftDeck());
   room.players.forEach((player, index) => {
     player.eliminated = false;
     player.hand = [gifts[index]];
@@ -187,6 +210,8 @@ function beginMemoryPhase(room, startingPlayerId) {
     player.lastGiftGiverId = null;
   });
   room.drawPile = gifts.slice(room.players.length);
+  room.usedGiftNames = gifts.slice(0, room.players.length).map((gift) => gift.name);
+  room.giftShopRefills = 0;
   room.drawnCard = undefined;
   room.drawnBy = null;
   room.startingPlayerId = startingPlayerId;
@@ -464,6 +489,7 @@ router.post("/", async (req, res, next) => {
         : { ...room.drawPile[0] };
       room.drawPile.shift();
       room.drawnCard = nextGift;
+      room.usedGiftNames.push(nextGift.name);
       room.drawnBy = userId;
       room.phase = "gift-reveal";
       room.revealEndsAt = Date.now() + DRAW_REVEAL_MS;
@@ -548,9 +574,12 @@ router.post("/", async (req, res, next) => {
           room.notice = `${penalizedName} receives a penalty point.`;
           advanceTo(room, outcome === "lie" ? userId : giver.userId);
         }
+        const callResult = outcome === "truth"
+          ? `${player.username} called bluff incorrectly: ${giver?.username || "The giver"}'s claim "${pending.claimedName}" matched ${pending.card.name} (case-insensitive).`
+          : `${player.username} called bluff correctly: "${pending.claimedName}" did not match ${pending.card.name}.`;
         logEvent(
           room,
-          `${player.username} called bluff: the gift was ${pending.card.name}, not ${pending.claimedName}. ${penalizedName} received a penalty point (${penalizedPlayer.penaltyCards.length}/3).`,
+          `${callResult} ${penalizedName} received a penalty point (${penalizedPlayer.penaltyCards.length}/3).`,
           "penalty"
         );
         room.pending = undefined;
@@ -585,6 +614,7 @@ module.exports = {
   playerHand,
   markStalePlayers,
   createGift,
+  createGiftDeck,
   refillGiftShop,
   giftToPass,
   resolvePassDirection,

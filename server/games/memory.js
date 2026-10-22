@@ -25,6 +25,45 @@ const CARD_CATALOG = [
   { name: "Radio", icon: "📻", direction: "both" },
   { name: "Balloon", icon: "🎈", direction: "left" },
   { name: "Toaster", icon: "🍞", direction: "right" },
+  { name: "Hat", icon: "🎩", direction: "left" },
+  { name: "Scarf", icon: "🧣", direction: "right" },
+  { name: "Crown", icon: "👑", direction: "both" },
+  { name: "Ring", icon: "💍", direction: "left" },
+  { name: "Candle", icon: "🕯️", direction: "right" },
+  { name: "Teapot", icon: "🫖", direction: "both" },
+  { name: "Spoon", icon: "🥄", direction: "left" },
+  { name: "Fork", icon: "🍴", direction: "right" },
+  { name: "Plate", icon: "🍽️", direction: "both" },
+  { name: "Sandwich", icon: "🥪", direction: "left" },
+  { name: "Pineapple", icon: "🍍", direction: "right" },
+  { name: "Lemon", icon: "🍋", direction: "both" },
+  { name: "Strawberry", icon: "🍓", direction: "left" },
+  { name: "Watermelon", icon: "🍉", direction: "right" },
+  { name: "Carrot", icon: "🥕", direction: "both" },
+  { name: "Corn", icon: "🌽", direction: "left" },
+  { name: "Cake", icon: "🎂", direction: "right" },
+  { name: "Donut", icon: "🍩", direction: "both" },
+  { name: "Cookie", icon: "🍪", direction: "left" },
+  { name: "Ice Cream", icon: "🍦", direction: "right" },
+  { name: "Pizza", icon: "🍕", direction: "both" },
+  { name: "Popcorn", icon: "🍿", direction: "left" },
+  { name: "Trophy", icon: "🏆", direction: "right" },
+  { name: "Bell", icon: "🔔", direction: "both" },
+  { name: "Diamond", icon: "💎", direction: "left" },
+  { name: "Rocket", icon: "🚀", direction: "right" },
+  { name: "Anchor", icon: "⚓", direction: "both" },
+  { name: "Sailboat", icon: "⛵", direction: "left" },
+  { name: "Airplane", icon: "✈️", direction: "right" },
+  { name: "Train", icon: "🚂", direction: "both" },
+  { name: "Bus", icon: "🚌", direction: "left" },
+  { name: "Truck", icon: "🚚", direction: "right" },
+  { name: "Snowflake", icon: "❄️", direction: "both" },
+  { name: "Sun", icon: "☀️", direction: "left" },
+  { name: "Moon", icon: "🌙", direction: "right" },
+  { name: "Star", icon: "⭐", direction: "both" },
+  { name: "Heart", icon: "❤️", direction: "left" },
+  { name: "Blossom", icon: "🌸", direction: "right" },
+  { name: "Seashell", icon: "🐚", direction: "both" },
 ];
 
 const rooms = new Map();
@@ -39,7 +78,8 @@ function shuffle(items) {
 }
 
 function resolveClaim(card, claimedName) {
-  return card.name.toLocaleLowerCase() === claimedName.trim().toLocaleLowerCase()
+  const normalize = (value) => value.normalize("NFKC").trim().toLocaleLowerCase();
+  return normalize(card.name) === normalize(claimedName)
     ? "truth"
     : "lie";
 }

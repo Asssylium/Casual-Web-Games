@@ -11,6 +11,7 @@ const {
   awardPenalty,
   findTarget,
   createGift,
+  createGiftDeck,
   resolvePassDirection,
   acceptGift,
 } = require("../server/routes/memory");
@@ -22,6 +23,10 @@ test("the route's card catalog is exported", () => {
 
 test("a matching card name is truthful regardless of capitalization", () => {
   assert.equal(resolveClaim({ name: "Chair" }, "chair"), "truth");
+});
+
+test("mixed-case Key claims are truthful", () => {
+  assert.equal(resolveClaim({ name: "Key" }, "kEY"), "truth");
 });
 
 test("a different card name is a lie", () => {
@@ -98,7 +103,10 @@ test("a new game gives every player one gift and fills the gift shop", () => {
   assert.deepEqual(room.players.map((player) => player.hand.length), [1, 1]);
   assert.equal(room.drawPile.length, CARD_CATALOG.length - 2);
   assert.equal(room.currentTurnId, "p2");
-  assert.ok(room.players.flatMap((player) => player.hand).every((gift) => ["left", "right", "both"].includes(gift.direction)));
+  assert.ok([...room.drawPile, ...room.players.flatMap((player) => player.hand)]
+    .every((gift) => ["left", "right", "both"].includes(gift.direction)));
+  assert.equal(new Set([...room.drawPile, ...room.players.flatMap((player) => player.hand)].map((gift) => gift.name)).size, CARD_CATALOG.length);
+  assert.deepEqual(room.usedGiftNames, room.players.map((player) => player.hand[0].name));
 });
 
 test("an empty gift shop refills with fresh uniquely identified gifts", () => {
@@ -108,6 +116,49 @@ test("an empty gift shop refills with fresh uniquely identified gifts", () => {
 
   assert.equal(room.drawPile.length, CARD_CATALOG.length);
   assert.equal(new Set(room.drawPile.map((gift) => gift.id)).size, CARD_CATALOG.length);
+  assert.equal(new Set(room.drawPile.map((gift) => gift.name)).size, CARD_CATALOG.length);
+});
+
+test("each game deck contains one unique copy of every gift", () => {
+  const deck = createGiftDeck();
+
+  assert.equal(deck.length, CARD_CATALOG.length);
+  assert.equal(new Set(deck.map((gift) => gift.name)).size, deck.length);
+  assert.equal(new Set(deck.map((gift) => gift.icon)).size, deck.length);
+});
+
+test("refilling the gift shop uses only faces not yet issued in the room", () => {
+  const usedGiftNames = CARD_CATALOG.slice(0, 4).map((gift) => gift.name);
+  const room = { drawPile: [], usedGiftNames, giftShopRefills: 0 };
+
+  refillGiftShop(room);
+
+  assert.equal(room.drawPile.length, CARD_CATALOG.length - usedGiftNames.length);
+  assert.ok(room.drawPile.every((gift) => !usedGiftNames.includes(gift.name)));
+});
+
+test("an exhausted unique catalog refills with fresh, distinct card faces", () => {
+  const room = {
+    drawPile: [],
+    usedGiftNames: CARD_CATALOG.map((gift) => gift.name),
+    giftShopRefills: 0,
+  };
+
+  refillGiftShop(room);
+
+  assert.equal(room.drawPile.length, CARD_CATALOG.length);
+  assert.equal(room.giftShopRefills, 1);
+  assert.ok(room.drawPile.every((gift) => room.usedGiftNames.includes(gift.name) === false));
+  assert.equal(new Set(room.drawPile.map((gift) => gift.name)).size, room.drawPile.length);
+  assert.equal(new Set(room.drawPile.map((gift) => gift.icon)).size, room.drawPile.length);
+});
+
+test("each gift direction can be randomized to left, right, or either", () => {
+  const card = { name: "Test", icon: "x", direction: "left" };
+
+  assert.equal(createGift(card, 0).direction, "left");
+  assert.equal(createGift(card, 1).direction, "right");
+  assert.equal(createGift(card, 2).direction, "both");
 });
 
 test("a player with two gifts must pass the oldest gift", () => {
@@ -138,8 +189,8 @@ test("left and right arrows target the adjacent eligible player", () => {
   assert.equal(findTarget(room, room.players[1], "right").userId, "p3");
 });
 
-test("a two-way gift keeps its choice instead of receiving a random arrow", () => {
-  const gift = createGift({ name: "Basket", icon: "x", direction: "both" });
+test("a gift copy uses its randomized arrow assignment", () => {
+  const gift = createGift({ name: "Basket", icon: "x", direction: "both" }, 2);
 
   assert.equal(gift.direction, "both");
 });

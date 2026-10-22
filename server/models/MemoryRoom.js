@@ -41,6 +41,8 @@ const memoryRoomSchema = new mongoose.Schema(
     phase: { type: String, enum: ["lobby", "reveal", "gift-reveal", "playing", "finished"], required: true },
     round: { type: Number, default: 1 },
     drawPile: { type: [cardSchema], default: [] },
+    usedGiftNames: { type: [String], default: [] },
+    giftShopRefills: { type: Number, default: 0 },
     drawnCard: { type: cardSchema, default: undefined },
     drawnBy: { type: String, default: null },
     startingPlayerId: { type: String, default: null },
