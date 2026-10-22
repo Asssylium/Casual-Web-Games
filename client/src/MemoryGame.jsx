@@ -338,14 +338,19 @@ export default function MemoryGame({ onBack, user }) {
       });
   }
 
-  function leaveRoom() {
+  async function leaveRoom() {
     if (!room) return onBack();
-    emitAction("game:leave", {}, () => {
+    setBusy(true);
+    try {
+      await postGameAction("game:leave");
+    } catch {
+    } finally {
       setRoom(null);
       setHand([]);
       setBlockedCardId(null);
+      setBusy(false);
       onBack();
-    });
+    }
   }
 
   function selectCard(card) {
