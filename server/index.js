@@ -2,11 +2,9 @@ const path = require("path");
 const http = require("http");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
-const { Server: SocketServer } = require("socket.io");
 const connectDatabase = require("./config/database");
-const User = require("./models/User");
-const attachMemoryGame = require("./games/memory");
-const { app, sessionMiddleware } = require("./app");
+const attachSocketServer = require("./socket");
+const { app } = require("./app");
 
 const port = Number(process.env.PORT || 5000);
 
@@ -17,27 +15,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 async function start() {
   await connectDatabase();
   const server = http.createServer(app);
-  const io = new SocketServer(server, {
-    cors: process.env.CLIENT_ORIGIN
-      ? { origin: process.env.CLIENT_ORIGIN, credentials: true }
-      : undefined,
-  });
-  io.engine.use(sessionMiddleware);
-  io.use(async (socket, next) => {
-    try {
-      const sessionUserId = socket.request.session?.userId;
-      if (!sessionUserId) return next(new Error("Authentication required"));
-
-      const user = await User.findById(sessionUserId).select("username").lean();
-      if (!user) return next(new Error("Authentication required"));
-
-      socket.data.user = { id: user._id.toString(), username: user.username };
-      return next();
-    } catch (error) {
-      return next(error);
-    }
-  });
-  attachMemoryGame(io);
+  const io = attachSocketServer(server);
 
   server.listen(port, () => {
     console.log(`Casual Game Portal listening on port ${port}`);

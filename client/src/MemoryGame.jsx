@@ -191,6 +191,9 @@ export default function MemoryGame({ onBack, user }) {
 
   useEffect(() => {
     const client = io(import.meta.env.VITE_SOCKET_URL || undefined, {
+      path: import.meta.env.VITE_SOCKET_PATH
+        || (import.meta.env.PROD ? "/api/socket-io/socket.io" : "/socket.io"),
+      transports: ["websocket"],
       autoConnect: false,
       withCredentials: true,
     });
