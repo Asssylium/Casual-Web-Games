@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useRef, useState } from "react";
+import * as Ably from "ably";
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -174,7 +174,8 @@ function ObjectCard({ card, selected, onClick, locked = false }) {
 }
 
 export default function MemoryGame({ onBack, user }) {
-  const [socket, setSocket] = useState(null);
+  const ablyRef = useRef(null);
+  const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
   const [hand, setHand] = useState([]);
@@ -189,41 +190,110 @@ export default function MemoryGame({ onBack, user }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const client = io(import.meta.env.VITE_SOCKET_URL || undefined, {
-      path: import.meta.env.VITE_SOCKET_PATH
-        || (import.meta.env.PROD ? "/api/socket-io/socket.io" : "/socket.io"),
-      transports: ["websocket"],
-      autoConnect: false,
-      withCredentials: true,
-    });
-    setSocket(client);
+  function applyGameState(result) {
+    setRoom(result.room || null);
+    setHand(result.hand?.cards || []);
+    setBlockedCardId(result.hand?.blockedCardId || null);
+    setObjects(result.objects || []);
+  }
 
-    client.on("connect", () => {
-      setConnected(true);
-      setError("");
-      client.emit("game:reconnect", {}, () => {});
+  async function loadGameState() {
+    const response = await fetch("/api/memory", { credentials: "include" });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load the game");
+    applyGameState(result);
+  }
+
+  async function postGameAction(eventName, payload = {}) {
+    const response = await fetch("/api/memory", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventName, payload }),
     });
-    client.on("disconnect", () => setConnected(false));
-    client.on("connect_error", (connectError) => {
-      setConnected(false);
-      setError(connectError.message === "Authentication required"
-        ? "Sign in again to join a room."
-        : "The game server is unavailable. Please try again.");
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Game action failed");
+    return result;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/memory", { credentials: "include" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Could not load the game");
+        if (!cancelled) {
+          applyGameState(result);
+          setInitialized(true);
+          setConnected(!result.room);
+        }
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setError(loadError.message || "Could not load the game");
+          setInitialized(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialized || !room?.code) {
+      if (initialized && !room) setConnected(true);
+      return undefined;
+    }
+
+    let active = true;
+    const client = new Ably.Realtime({
+      authUrl: `/api/memory/ably-token?room=${encodeURIComponent(room.code)}`,
+      authMethod: "GET",
+      autoConnect: false,
+      closeOnUnload: true,
     });
-    client.on("game:state", setRoom);
-    client.on("game:hand", ({ cards, blockedCardId: receivedCardId }) => {
-      setHand(cards || []);
-      setBlockedCardId(receivedCardId || null);
+    ablyRef.current = client;
+    const stateChannel = client.channels.get(`memory:${room.code}:state`);
+    const privateHandChannel = client.channels.get(`memory:${room.code}:player:${user.id}`);
+
+    const subscribeToRoom = stateChannel.subscribe("game:state", (message) => {
+      if (active) setRoom(message.data);
+    });
+    const subscribeToHand = privateHandChannel.subscribe("game:hand", (message) => {
+      if (!active) return;
+      setHand(message.data.cards || []);
+      setBlockedCardId(message.data.blockedCardId || null);
       setSelectedCardId("");
       setPassDirection("");
     });
-    client.on("game:catalog", ({ objects: catalog }) => setObjects(catalog || []));
-    client.on("game:error", ({ error: gameError }) => setError(gameError || "Game action failed"));
-    client.connect();
+    const connectionListener = (change) => {
+      if (!active) return;
+      const isConnected = change.current === "connected";
+      setConnected(isConnected);
+      if (isConnected) {
+        setError("");
+        void postGameAction("game:reconnect").catch((connectionError) => {
+          setError(connectionError.message || "Could not reconnect to the room");
+        });
+      }
+      if (change.current === "failed") {
+        setError("Realtime connection failed. Refresh and try again.");
+      }
+    };
+    client.connection.on(connectionListener);
+    void Promise.all([subscribeToRoom, subscribeToHand])
+      .then(() => client.connect())
+      .catch((connectionError) => {
+        if (active) setError(connectionError.message || "Could not connect to the game");
+      });
 
-    return () => client.disconnect();
-  }, []);
+    return () => {
+      active = false;
+      client.connection.off(connectionListener);
+      client.close();
+      if (ablyRef.current === client) ablyRef.current = null;
+    };
+  }, [initialized, room?.code, user.id]);
 
   useEffect(() => {
     if (room?.phase !== "reveal" || !room.revealEndsAt) {
@@ -239,21 +309,33 @@ export default function MemoryGame({ onBack, user }) {
     return () => window.clearInterval(timer);
   }, [room?.phase, room?.revealEndsAt]);
 
+  useEffect(() => {
+    if (room?.phase !== "reveal" || !room.revealEndsAt) return undefined;
+    const timer = window.setTimeout(() => {
+      void loadGameState().catch((refreshError) => {
+        setError(refreshError.message || "Could not refresh the game");
+      });
+    }, Math.max(0, room.revealEndsAt - Date.now()) + 100);
+    return () => window.clearTimeout(timer);
+  }, [room?.phase, room?.revealEndsAt]);
+
   function emitAction(eventName, payload = {}, onSuccess) {
-    if (!socket || !connected) {
+    if (!initialized || !connected) {
       setError("Connecting to the game server...");
       return;
     }
     setError("");
     setBusy(true);
-    socket.emit(eventName, payload, (result) => {
-      setBusy(false);
-      if (!result?.ok) {
-        setError(result?.error || "Game action failed");
-        return;
-      }
-      onSuccess?.(result);
-    });
+    void postGameAction(eventName, payload)
+      .then((result) => {
+        applyGameState(result);
+        setBusy(false);
+        onSuccess?.(result);
+      })
+      .catch((actionError) => {
+        setBusy(false);
+        setError(actionError.message || "Game action failed");
+      });
   }
 
   function leaveRoom() {

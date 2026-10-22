@@ -1,6 +1,6 @@
 # Casual Game Portal
 
-A casual game portal with a React 19 and Vite frontend, Node.js/Express 5 API, MongoDB sessions, and Socket.IO multiplayer.
+A casual game portal with a React 19 and Vite frontend, Node.js/Express 5 API, MongoDB sessions, and Ably Realtime multiplayer.
 
 ## Requirements
 
@@ -10,9 +10,9 @@ A casual game portal with a React 19 and Vite frontend, Node.js/Express 5 API, M
 ## Run locally
 
 1. Install dependencies with `npm install`.
-2. Set `MONGO_URI`, `SESSION_SECRET`, and `GOOGLE_CLIENT_ID` in `.env`. Create a Google OAuth web client and add your app origin (for local development, `http://localhost:5173`) to its authorized JavaScript origins.
+2. Set `MONGO_URI`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, and `ABLY_API_KEY` in `.env`. Create a Google OAuth web client and add your app origin (for local development, `http://localhost:5173`) to its authorized JavaScript origins. Configure the Ably key with `publish` and `subscribe` capabilities for `memory:*` channels.
 3. Start MongoDB, then run `npm run dev`.
-4. Open [http://localhost:5173](http://localhost:5173). Vite proxies API and Socket.IO traffic to the Express server on port 5000.
+4. Open [http://localhost:5173](http://localhost:5173). Vite proxies API traffic to the Express server on port 5000.
 
 ## Project structure
 
@@ -24,7 +24,7 @@ server/
 	middleware/           Express middleware
 	models/               MongoDB models
 	routes/               HTTP API routes
-	index.js              Express and Socket.IO entry point
+	index.js              Express API and static server entry point
 tests/                  Automated tests
 vite.config.js          Frontend development and build configuration
 ```
@@ -37,11 +37,9 @@ Run `npm run build` to compile the React app into `dist/`, then start the API an
 
 ### Vercel
 
-Keep the Vercel project root set to the repository root, not `client/`. The root `vercel.json` builds `client/` into `dist/` and rewrites `/api/*` to the Node function at `api/index.js`. Configure `MONGO_URI`, `SESSION_SECRET` (at least 32 random characters), and `GOOGLE_CLIENT_ID` in Vercel's Production environment, then redeploy. Do not set `PORT` to a database or server URL; Vercel manages function ports. Add the deployed site origin to the Google OAuth client's authorized JavaScript origins.
+Keep the Vercel project root set to the repository root, not `client/`. The root `vercel.json` builds `client/` into `dist/` and rewrites `/api/*` to the Node function at `api/index.js`. Configure `MONGO_URI`, `SESSION_SECRET` (at least 32 random characters), `GOOGLE_CLIENT_ID`, and `ABLY_API_KEY` in Vercel's Production environment, then redeploy. The Ably API key must allow server-side publish and token issuance for `memory:*` channels; it is never sent to the browser. The server issues short-lived Ably tokens limited to subscribing to the current room state and that player's private hand. Do not set `PORT`; Vercel manages function ports. Add the deployed site origin to the Google OAuth client's authorized JavaScript origins.
 
-Vercel Functions do not provide the persistent Socket.IO server required for live Memory Pass rooms. The authentication API can run on Vercel, but multiplayer needs a separately hosted, long-running Node service. Set `VITE_SOCKET_URL` in Vercel to that service's HTTPS origin (for example, `https://game.example.com`) and redeploy. Set `CLIENT_ORIGIN` on the game server to the exact frontend origin (for example, `https://casual.example.com`).
-
-Socket authentication uses the same MongoDB-backed session as the API. To share its cookie across the frontend and game server, use custom domains under the same parent domain (for example, `casual.example.com` and `game.example.com`) and set `COOKIE_DOMAIN=.example.com` on both deployments. The game server also needs the same `MONGO_URI` and `SESSION_SECRET`. A Vercel `*.vercel.app` frontend and a separately hosted game server on an unrelated domain cannot share this cookie; use a custom domain or implement token-based socket authentication instead.
+Memory Pass room state and hands are stored in MongoDB. Ably carries live state updates; clients send game actions to the authenticated API, which validates them before publishing. Configure the same `MONGO_URI` and `SESSION_SECRET` locally when testing multiplayer. Vercel functions may process concurrent updates; optimistic room versioning rejects conflicting moves so clients can refresh and retry. Reveal expiry is applied on the next API request, not by a background timer.
 
 ## Authentication API
 

@@ -4,15 +4,12 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 30
-    },
-    "api/socket-io.js": {
-      "maxDuration": 300
     }
   },
   "rewrites": [
     {
-      "source": "/api/auth/:path*",
-      "destination": "/api/index?route=auth/:path*"
+      "source": "/api/:path*",
+      "destination": "/api/index?route=:path*"
     }
   ]
 }

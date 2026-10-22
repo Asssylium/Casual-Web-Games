@@ -13,6 +13,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "ably": "^2.29.0",
     "bcryptjs": "^3.0.3",
     "connect-mongo": "^6.0.0",
     "dotenv": "^18.0.8",
@@ -23,9 +24,7 @@
     "lucide-react": "^1.61.0",
     "mongoose": "^9.11.2",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "socket.io": "^4.8.4",
-    "socket.io-client": "^4.8.4"
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.0",

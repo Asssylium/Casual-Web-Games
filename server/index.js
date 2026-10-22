@@ -3,7 +3,6 @@ const http = require("http");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 const connectDatabase = require("./config/database");
-const attachSocketServer = require("./socket");
 const { app } = require("./app");
 
 const port = Number(process.env.PORT || 5000);
@@ -15,7 +14,6 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 async function start() {
   await connectDatabase();
   const server = http.createServer(app);
-  const io = attachSocketServer(server);
 
   server.listen(port, () => {
     console.log(`Casual Game Portal listening on port ${port}`);
@@ -23,7 +21,7 @@ async function start() {
 
   const shutdown = (signal) => {
     console.log(`${signal} received; shutting down`);
-    io.close(async () => {
+    server.close(async () => {
       try {
         await require("mongoose").disconnect();
       } catch (disconnectError) {
