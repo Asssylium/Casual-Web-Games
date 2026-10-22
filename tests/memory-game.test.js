@@ -196,15 +196,25 @@ test("three penalty points end the game and retain tied lowest scorers", () => {
   assert.equal(room.winnerId, null);
 });
 
-test("public room state does not expose private hands", () => {
+test("public room state shows held gifts on the table but not penalty-card contents", () => {
   const room = {
     code: "ABCDE",
     phase: "playing",
     hostId: "player-1",
     round: 1,
     players: [
-      { userId: "player-1", username: "One", hand: [{ id: "secret", name: "Cat" }] },
-      { userId: "player-2", username: "Two", hand: [{ id: "private", name: "Lamp" }] },
+      {
+        userId: "player-1",
+        username: "One",
+        hand: [{ id: "gift-1", name: "Cat", icon: "cat", direction: "left" }],
+        penaltyCards: [{ id: "penalty-secret", name: "Secret Penalty", icon: "x", direction: "right" }],
+      },
+      {
+        userId: "player-2",
+        username: "Two",
+        hand: [{ id: "gift-2", name: "Lamp", icon: "lamp", direction: "right" }],
+        penaltyCards: [],
+      },
     ],
     currentTurnId: "player-1",
     pending: null,
@@ -216,8 +226,10 @@ test("public room state does not expose private hands", () => {
   };
 
   const state = publicState(room);
-  assert.equal(JSON.stringify(state).includes("secret"), false);
-  assert.equal(JSON.stringify(state).includes("Cat"), false);
+  assert.deepEqual(state.players[0].gifts, [{ name: "Cat", icon: "cat", direction: "left" }]);
+  assert.deepEqual(state.players[1].gifts, [{ name: "Lamp", icon: "lamp", direction: "right" }]);
+  assert.equal(JSON.stringify(state).includes("penalty-secret"), false);
+  assert.equal(JSON.stringify(state).includes("Secret Penalty"), false);
   assert.deepEqual(playerHand(room, "player-1").cards, room.players[0].hand);
   assert.deepEqual(playerHand(room, "player-2").cards, room.players[1].hand);
 });

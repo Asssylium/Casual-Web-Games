@@ -131,6 +131,22 @@ function PlayerOrbit({ room, userId, revealCards = null, selectedDirection = "" 
                 {player.eliminated ? "Out" : `${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.penaltyCount || 0} pt`}
               </span>
             )}
+            {!revealedCard && !player.eliminated && player.gifts?.length > 0 && (
+              <div aria-label={`${player.username}'s gifts`} className="orbit-gift-stack">
+                {player.gifts.map((gift, giftIndex) => (
+                  <div
+                    aria-label={`${gift.name}, ${directionText(gift.direction)}`}
+                    className={`orbit-gift-face${player.id === userId ? " orbit-gift-owner" : " orbit-gift-other"}`}
+                    key={`${gift.name}-${giftIndex}`}
+                    role="img"
+                  >
+                    <span aria-hidden="true">{gift.icon}</span>
+                    <strong>{gift.name}</strong>
+                    <small>{directionText(gift.direction)}</small>
+                  </div>
+                ))}
+              </div>
+            )}
             {isTarget && (
               <span className="orbit-target-label">
                 {room.pending ? "Receiving" : `Pass ${direction}`}

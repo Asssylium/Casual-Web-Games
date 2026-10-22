@@ -181,6 +181,12 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .orbit-avatar { position: relative; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -24px; border: 2px solid #c4b5fd; border-radius: 50%; background: #38315a; color: #f2f4e9; font-size: .8rem; font-weight: 800; box-shadow: 0 0 0 4px #171d30; }
 .orbit-name { display: block; max-width: 100%; margin-top: 5px; overflow: hidden; color: #e8eee3; font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
 .orbit-card-count { margin-top: 4px; color: #9ba7bc; font-size: .66rem; }
+.orbit-gift-stack { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 100%; margin-top: 6px; }
+.orbit-gift-face { display: grid; justify-items: center; gap: 2px; width: 58px; min-height: 58px; padding: 4px; border: 1px solid #ffffff38; border-radius: 7px; background: linear-gradient(145deg, #eaf0d8, #c8d2ae); color: #172219; }
+.orbit-gift-face > span { font-size: 1.05rem; line-height: 1; }
+.orbit-gift-face > strong { max-width: 100%; overflow: hidden; font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; }
+.orbit-gift-face > small { font-size: .46rem; white-space: nowrap; }
+.orbit-gift-other { transform: rotate(180deg); }
 .orbit-seat-turn { border-color: #38bdf877; }
 .orbit-seat-turn .orbit-avatar { border-color: #38bdf8; color: #7dd3fc; }
 .orbit-seat-target { z-index: 2; border-color: #a78bfa; background: #302750; box-shadow: 0 0 0 3px #a78bfa40, 0 15px 30px #0008; }
