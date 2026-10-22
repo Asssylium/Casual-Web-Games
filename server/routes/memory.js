@@ -523,6 +523,13 @@ router.post("/", async (req, res, next) => {
       return res.json({ ok: true, ...resultFor(freshRoom, userId) });
     }
 
+    if (eventName === "game:bot-tick") {
+      const phaseChanged = completeReveal(room);
+      const botChanged = runMemoryBots(room);
+      if (phaseChanged || botChanged) return saveAndReply(room, userId, res);
+      return res.json({ ok: true, ...resultFor(room, userId) });
+    }
+
     const presenceChanged = markStalePlayers(room);
     player.connected = true;
     player.lastSeenAt = new Date();

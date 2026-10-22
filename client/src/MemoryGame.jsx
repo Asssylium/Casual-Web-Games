@@ -345,7 +345,9 @@ export default function MemoryGame({ onBack, user }) {
   useEffect(() => {
     if (!room?.code || !room.players.some((player) => player.isBot) || ["lobby", "finished"].includes(room.phase)) return undefined;
     const pollBots = window.setInterval(() => {
-      void loadGameState().catch((pollError) => setError(pollError.message || "Could not update the bots"));
+      void postGameAction("game:bot-tick")
+        .then(applyGameState)
+        .catch((pollError) => setError(pollError.message || "Could not update the bots"));
     }, 1000);
     return () => window.clearInterval(pollBots);
   }, [room?.code, room?.phase, room?.players]);
