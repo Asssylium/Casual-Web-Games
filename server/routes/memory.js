@@ -416,7 +416,9 @@ router.get("/", async (req, res, next) => {
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
     }
 
-    if (completeReveal(room) || runMemoryBots(room) || presenceChanged) await saveAndReply(room, userId, res);
+    const phaseChanged = completeReveal(room);
+    const botChanged = runMemoryBots(room);
+    if (phaseChanged || botChanged || presenceChanged) await saveAndReply(room, userId, res);
     else res.json({ ok: true, ...resultFor(room, userId) });
   } catch (error) {
     next(error);
