@@ -170,6 +170,11 @@ function giftToPass(room, player, userId) {
   return null;
 }
 
+function resolvePassDirection(card, requestedDirection) {
+  if (card.direction !== "both") return card.direction;
+  return requestedDirection === "right" ? "right" : "left";
+}
+
 function beginMemoryPhase(room, startingPlayerId) {
   const gifts = shuffle(CARD_CATALOG).map(createGift);
   room.players.forEach((player, index) => {
@@ -455,10 +460,7 @@ router.post("/", async (req, res, next) => {
       if (!claim || claim.length > 40) {
         return sendFailure(res, 400, "Enter a claim between 1 and 40 characters");
       }
-      const passDirection = card.direction === "both" ? direction : card.direction;
-      if (passDirection !== "left" && passDirection !== "right") {
-        return sendFailure(res, 400, "Choose a direction for this gift");
-      }
+      const passDirection = resolvePassDirection(card, direction);
       const receiver = findTarget(room, player, passDirection);
       if (!receiver) return sendFailure(res, 409, "There is no player in that direction");
       if (gift.isDrawnGift) {
@@ -545,6 +547,7 @@ module.exports = {
   createGift,
   refillGiftShop,
   giftToPass,
+  resolvePassDirection,
   findTarget,
   beginMemoryPhase,
   awardPenalty,

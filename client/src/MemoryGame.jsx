@@ -168,6 +168,7 @@ function ObjectCard({ card, label = "", locked = false }) {
 
 export default function MemoryGame({ onBack, user }) {
   const ablyRef = useRef(null);
+  const turnDialogRef = useRef(null);
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
@@ -389,7 +390,11 @@ export default function MemoryGame({ onBack, user }) {
   }
 
   function passGift() {
-    emitAction("game:pass", { claimedName, direction: passDirection }, () => {
+    const card = drawnCard || (hand.length > 1 ? hand[0] : null);
+    const direction = card?.direction === "both"
+      ? passDirection || "left"
+      : card?.direction;
+    emitAction("game:pass", { claimedName, direction }, () => {
       setClaimedName("");
       setPassDirection("");
     });
@@ -418,7 +423,21 @@ export default function MemoryGame({ onBack, user }) {
   const isMyTurn = room?.currentTurnId === user.id;
   const isReceiver = room?.pending?.toId === user.id;
   const giftToPassNow = drawnCard || (hand.length > 1 ? hand[0] : null);
+  const shouldOpenTurnDialog = Boolean(
+    room?.phase === "playing" && isMyTurn && !room.pending
+  );
   const canLeaveRoom = !room || room.phase === "lobby" || room.phase === "finished";
+
+  useEffect(() => {
+    const dialog = turnDialogRef.current;
+    if (!dialog) return;
+    if (shouldOpenTurnDialog && !dialog.open) dialog.showModal();
+    if (!shouldOpenTurnDialog && dialog.open) dialog.close();
+  }, [shouldOpenTurnDialog, room?.currentTurnId, room?.pending?.toId, hand.length, drawnCard?.id]);
+
+  function openTurnDialog() {
+    if (!turnDialogRef.current?.open) turnDialogRef.current?.showModal();
+  }
 
   return (
     <section className="memory-game" aria-label="Memory Pass game">
@@ -628,27 +647,7 @@ export default function MemoryGame({ onBack, user }) {
                         )}
                       </div>
                     ) : isMyTurn ? (
-                      <>
-                        {giftToPassNow?.direction === "both" && (
-                          <div className="direction-options" role="group" aria-label="Choose pass direction">
-                            <button
-                              aria-pressed={passDirection === "left"}
-                              className="direction-option"
-                              onClick={() => choosePassDirection("left")}
-                              type="button"
-                            >
-                              ← Left
-                            </button>
-                            <button
-                              aria-pressed={passDirection === "right"}
-                              className="direction-option"
-                              onClick={() => choosePassDirection("right")}
-                              type="button"
-                            >
-                              Right →
-                            </button>
-                          </div>
-                        )}
+                      <div className="turn-prompt">
                         <div className="hand-cards">
                           {hand.map((card, index) => (
                             <ObjectCard
@@ -658,37 +657,15 @@ export default function MemoryGame({ onBack, user }) {
                               locked={hand.length > 1 && index > 0}
                             />
                           ))}
-                          {drawnCard && <ObjectCard card={drawnCard} label="New gift · pass this" />}
+                          {drawnCard && <ObjectCard card={drawnCard} label="New gift" />}
                         </div>
-                        {hand.length === 1 && !drawnCard && (
-                          <div className="pass-controls">
-                            <GameButton disabled={busy} onClick={() => emitAction("game:draw")}>
-                              <Sparkles size={16} /> Draw from gift shop
-                            </GameButton>
-                          </div>
-                        )}
-                        {(hand.length > 1 || drawnCard) && (
-                          <div className="pass-controls">
-                            <label className="field claim-field">
-                              <span>What are you claiming the card is?</span>
-                              <input
-                                autoComplete="off"
-                                maxLength={40}
-                                onChange={(event) => setClaimedName(event.target.value)}
-                                placeholder="Type any object name"
-                                value={claimedName}
-                              />
-                            </label>
-                            <GameButton
-                              disabled={busy || !claimedName.trim() || ((drawnCard || hand[0]).direction === "both" && !passDirection)}
-                              onClick={passGift}
-                            >
-                              Pass {passDirection || (drawnCard || hand[0]).direction}
-                              <ArrowRight size={16} />
-                            </GameButton>
-                          </div>
-                        )}
-                      </>
+                        <p>{hand.length === 1 && !drawnCard
+                          ? "Draw a gift to start your turn."
+                          : `Send ${drawnCard ? "the new gift" : "your oldest gift"} in its arrow direction.`}</p>
+                        <GameButton disabled={busy} onClick={openTurnDialog}>
+                          {hand.length === 1 && !drawnCard ? "Open draw controls" : "Open pass controls"}
+                        </GameButton>
+                      </div>
                     ) : (
                       <div className="waiting-turn">
                         <span className="waiting-pulse" aria-hidden="true" />
@@ -756,6 +733,92 @@ export default function MemoryGame({ onBack, user }) {
           )}
         </div>
       )}
+
+      <dialog
+        aria-labelledby="turn-dialog-title"
+        className="turn-dialog"
+        ref={turnDialogRef}
+      >
+        <div className="turn-dialog-content">
+          <div className="turn-dialog-heading">
+            <div>
+              <span className="eyebrow">Your turn</span>
+              <h2 id="turn-dialog-title">
+                {hand.length === 1 && !drawnCard
+                  ? "Draw a gift"
+                  : `Send ${drawnCard ? "the new gift" : "your oldest gift"}`}
+              </h2>
+            </div>
+            <button
+              aria-label="Close turn controls"
+              className="turn-dialog-close"
+              onClick={() => turnDialogRef.current?.close()}
+              type="button"
+            >
+              <X aria-hidden="true" size={18} />
+            </button>
+          </div>
+
+          {hand.length === 1 && !drawnCard ? (
+            <>
+              <ObjectCard card={hand[0]} label="Your current gift" />
+              <p className="turn-dialog-copy">Draw the next gift, memorize it and its arrow, then pass it.</p>
+              <GameButton disabled={busy} onClick={() => emitAction("game:draw")}>
+                <Sparkles size={16} /> Draw from gift shop
+              </GameButton>
+            </>
+          ) : giftToPassNow ? (
+            <>
+              <div className="turn-send-card">
+                <span className="eyebrow">Card to send</span>
+                <ObjectCard
+                  card={giftToPassNow}
+                  label={drawnCard ? "Just drawn" : "Oldest gift"}
+                />
+                <p>{directionText(giftToPassNow.direction)}</p>
+              </div>
+              {giftToPassNow.direction === "both" && (
+                <div className="direction-options" role="group" aria-label="Choose pass direction">
+                  <button
+                    aria-pressed={passDirection === "left"}
+                    className="direction-option"
+                    onClick={() => choosePassDirection("left")}
+                    type="button"
+                  >
+                    <ArrowLeft size={16} /> Left
+                  </button>
+                  <button
+                    aria-pressed={passDirection === "right"}
+                    className="direction-option"
+                    onClick={() => choosePassDirection("right")}
+                    type="button"
+                  >
+                    Right <ArrowRight size={16} />
+                  </button>
+                </div>
+              )}
+              <label className="field claim-field">
+                <span>What are you claiming the gift is?</span>
+                <input
+                  autoComplete="off"
+                  autoFocus
+                  maxLength={40}
+                  onChange={(event) => setClaimedName(event.target.value)}
+                  placeholder="Type any object name"
+                  value={claimedName}
+                />
+              </label>
+              <GameButton
+                disabled={busy || !claimedName.trim() || (giftToPassNow.direction === "both" && !passDirection)}
+                onClick={passGift}
+              >
+                Send gift {passDirection || giftToPassNow.direction}
+                <ArrowRight size={16} />
+              </GameButton>
+            </>
+          ) : null}
+        </div>
+      </dialog>
     </section>
   );
 }

@@ -202,6 +202,8 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .turn-panel, .table-panel, .winner-panel { padding: 20px; border: 1px solid #ffffff18; border-radius: 13px; background: #0c1220; }
 .turn-panel-heading { margin-bottom: 18px; }
 .turn-panel-heading h2 { font-size: 1.25rem; }
+.turn-prompt { display: grid; justify-items: start; gap: 12px; }
+.turn-prompt p { margin: 0; color: #9ba7bc; font-size: .88rem; }
 .hand-count { color: #9ba7bc; font-size: .76rem; white-space: nowrap; }
 .hand-cards { display: flex; flex-wrap: wrap; gap: 10px; }
 .object-card { display: grid; justify-items: center; gap: 7px; width: 138px; min-height: 150px; padding: 14px 10px; border: 1px solid #ffffff24; border-radius: 12px; background: #171d30; color: white; }
@@ -222,6 +224,20 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .pending-claim p { margin: 0; color: #cbd5e1; line-height: 1.55; }
 .pending-claim strong { color: white; }
 .challenge-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.turn-dialog { width: min(440px, calc(100vw - 28px)); max-width: none; max-height: min(88dvh, 760px); overflow-y: auto; padding: 0; border: 1px solid #ffffff26; border-radius: 16px; background: #151b2b; color: #f8fafc; box-shadow: 0 28px 90px #000a; }
+.turn-dialog::backdrop { background: #050812c9; backdrop-filter: blur(4px); }
+.turn-dialog-content { display: grid; justify-items: stretch; gap: 16px; padding: clamp(20px, 5vw, 30px); }
+.turn-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.turn-dialog-heading h2 { margin: 6px 0 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.4rem; }
+.turn-dialog-close { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #ffffff24; border-radius: 9px; background: #ffffff08; color: #e2e8f0; }
+.turn-send-card { display: grid; justify-items: center; gap: 10px; padding: 16px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
+.turn-send-card .object-card { width: min(100%, 210px); }
+.turn-send-card > p, .turn-dialog-copy { margin: 0; color: #b6bfd0; font-size: .86rem; text-align: center; }
+.turn-dialog .direction-options { display: grid; grid-template-columns: 1fr 1fr; }
+.turn-dialog .direction-option { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; }
+.turn-dialog .direction-option[aria-pressed="true"] { border-color: #a78bfa; background: #302750; color: white; }
+.turn-dialog .claim-field { margin: 0; }
+.turn-dialog .game-action { width: 100%; min-height: 46px; }
 .danger-action { background: #fb7185; color: #2b0d15; }
 .waiting-turn { display: flex; align-items: center; gap: 12px; min-height: 110px; color: #9ba7bc; }
 .waiting-turn p { margin: 0; line-height: 1.5; }

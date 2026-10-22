@@ -11,6 +11,7 @@ const {
   awardPenalty,
   findTarget,
   createGift,
+  resolvePassDirection,
 } = require("../server/routes/memory");
 
 test("the route's card catalog is exported", () => {
@@ -140,6 +141,12 @@ test("a two-way gift keeps its choice instead of receiving a random arrow", () =
   const gift = createGift({ name: "Basket", icon: "x", direction: "both" });
 
   assert.equal(gift.direction, "both");
+});
+
+test("pass direction follows the card and defaults missing either-direction choices left", () => {
+  assert.equal(resolvePassDirection({ direction: "right" }), "right");
+  assert.equal(resolvePassDirection({ direction: "both" }, "right"), "right");
+  assert.equal(resolvePassDirection({ direction: "both" }), "left");
 });
 
 test("three penalty points end the game and retain tied lowest scorers", () => {
