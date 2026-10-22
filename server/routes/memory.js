@@ -509,7 +509,7 @@ router.post("/", async (req, res, next) => {
       room.pending = { card, fromId: userId, toId: receiver.userId, claimedName: claim, direction: passDirection };
       room.lastReveal = null;
       room.notice = `${player.username} passed a card to ${receiver.username}.`;
-      logEvent(room, `${player.username} passed a gift to ${receiver.username}, claiming it was ${claim}.`, "pass");
+      logEvent(room, `${player.username} passed a gift ${passDirection} to ${receiver.username}, claiming it was ${claim}.`, "pass");
     } else if (eventName === "game:accept" || eventName === "game:challenge") {
       if (room.phase !== "playing" || !room.pending?.card) {
         return sendFailure(res, 409, "There is no card to respond to");

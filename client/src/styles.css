@@ -197,10 +197,12 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .player-orbit-two { min-height: 420px; width: min(100%, 900px); border-radius: 20px; }
 .player-orbit-two .orbit-ring { inset: 28% 13%; }
 .player-orbit-two .orbit-center { transform: translate(-50%, -50%) scale(.85); }
-.playing-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 14px; align-items: start; }
-.table-log-column { display: grid; gap: 12px; min-width: 0; }
-.table-log-column .table-panel { order: 0; }
-.table-log-column .player-orbit { width: 100%; min-height: clamp(320px, 48vh, 540px); border-radius: 20px; }
+.playing-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.live-table-panel { display: grid; gap: 10px; min-width: 0; padding: 16px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
+.live-table-panel .game-log-heading { padding: 0 4px; }
+.live-table-panel .table-panel { order: 0; }
+.live-table-panel .player-orbit { width: 100%; min-height: clamp(340px, 52vh, 580px); border-radius: 20px; }
+.game-info-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 14px; align-items: start; }
 .game-log-panel, .player-hand-panel { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 18px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
 .game-log-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .game-log-heading h2 { margin: 5px 0 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.15rem; }
@@ -288,7 +290,7 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
   .layout { grid-template-columns: 1fr; gap: 28px; }
   .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .reveal-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .playing-layout { grid-template-columns: 1fr; }
+  .game-info-layout { grid-template-columns: 1fr; }
   .player-orbit { min-height: 500px; }
   .intro h1 { font-size: clamp(2.7rem, 13vw, 4.6rem); }
   .intro p { margin-bottom: 0; }

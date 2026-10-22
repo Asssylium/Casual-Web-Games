@@ -612,15 +612,24 @@ export default function MemoryGame({ onBack, user }) {
 
               {room.phase === "playing" && (
                 <div className="playing-layout">
-                  <div className="table-log-column">
-                    <aside className="table-panel">
+                  <section aria-label="Players at the table" className="live-table-panel">
+                    <div className="game-log-heading">
+                      <div>
+                        <span className="eyebrow">Round {room.round}</span>
+                        <h2>The table</h2>
+                      </div>
+                      <span className="gift-shop-count">Gift shop · {room.giftShopCount}</span>
+                    </div>
+                    <div className="table-panel">
                       <span className="eyebrow">At the table</span>
                       <PlayerOrbit
                         players={room.players}
                         room={room}
                         userId={user.id}
                       />
-                    </aside>
+                    </div>
+                  </section>
+                  <div className="game-info-layout">
                     <section aria-label="Game log" className="game-log-panel">
                       <div className="game-log-heading">
                         <div>
@@ -639,9 +648,8 @@ export default function MemoryGame({ onBack, user }) {
                         {!room.gameLog?.length && <li className="game-log-empty">The game log will appear here.</li>}
                       </ol>
                     </section>
-                  </div>
 
-                  <section aria-label="Your gifts" className="player-hand-panel">
+                    <section aria-label="Your gifts" className="player-hand-panel">
                     <div className="game-log-heading">
                       <div>
                         <span className="eyebrow">Your hand</span>
@@ -676,7 +684,8 @@ export default function MemoryGame({ onBack, user }) {
                         {room.players.find((player) => player.id === room.currentTurnId)?.username || "A player"} is taking a turn.
                       </p>
                     )}
-                  </section>
+                    </section>
+                  </div>
                 </div>
               )}
 
