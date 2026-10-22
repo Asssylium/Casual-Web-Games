@@ -204,7 +204,11 @@ export default function MemoryGame({ onBack, user }) {
       body: JSON.stringify({ eventName, payload }),
     });
     const result = await response.json();
-    if (!response.ok || !result.ok) throw new Error(result.error || "Game action failed");
+    if (!response.ok || !result.ok) {
+      const actionError = new Error(result.error || "Game action failed");
+      actionError.status = response.status;
+      throw actionError;
+    }
     return result;
   }
 
@@ -343,8 +347,14 @@ export default function MemoryGame({ onBack, user }) {
         setBusy(false);
         onSuccess?.(result);
       })
-      .catch((actionError) => {
+      .catch(async (actionError) => {
         setBusy(false);
+        if (actionError.status === 409) {
+          try {
+            await loadGameState();
+          } catch {
+          }
+        }
         setError(actionError.message || "Game action failed");
       });
   }

@@ -303,7 +303,7 @@ router.get("/", async (req, res, next) => {
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
     }
 
-    const presenceChanged = markStalePlayers(room);
+    markStalePlayers(room);
     if (room.players.every((player) => !player.connected)) {
       await MemoryRoom.deleteOne({ _id: room._id });
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null }, objects: CARD_CATALOG });
@@ -351,13 +351,12 @@ router.post("/", async (req, res, next) => {
     }
 
     if (!room) return sendFailure(res, 404, "No active room was found for your account");
-    if (eventName !== "game:cancel" && completeReveal(room)) {
+    if (eventName !== "game:cancel" && eventName !== "game:heartbeat" && eventName !== "game:reconnect" && completeReveal(room)) {
       await room.save();
       await broadcastRoom(room);
     }
     const player = findPlayer(room, userId);
     if (!player) return sendFailure(res, 403, "You are not a player in this room");
-    const presenceChanged = markStalePlayers(room);
 
     if (eventName === "game:cancel") {
       if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can cancel the game");
@@ -371,20 +370,45 @@ router.post("/", async (req, res, next) => {
       return res.json({ ok: true, room: null, hand: { cards: [], blockedCardId: null } });
     }
 
+    if (eventName === "game:heartbeat" || eventName === "game:reconnect") {
+      if (eventName === "game:reconnect" && player.eliminated) {
+        return sendFailure(res, 403, "You are no longer in this game");
+      }
+
+      const now = new Date();
+      const staleUserIds = room.players
+        .filter((item) => item.userId !== userId && item.connected &&
+          now.getTime() - new Date(item.lastSeenAt || 0).getTime() > PLAYER_TIMEOUT_MS)
+        .map((item) => item.userId);
+      const updates = {
+        "players.$[active].connected": true,
+        "players.$[active].lastSeenAt": now,
+      };
+      const arrayFilters = [{ "active.userId": userId }];
+      if (staleUserIds.length) {
+        updates["players.$[stale].connected"] = false;
+        arrayFilters.push({ "stale.userId": { $in: staleUserIds } });
+      }
+
+      const filter = { _id: room._id, "players.userId": userId };
+      if (eventName === "game:reconnect" && room.phase === "playing" && !room.currentTurnId) {
+        filter.currentTurnId = null;
+        updates.currentTurnId = userId;
+      }
+      await MemoryRoom.updateOne(filter, { $set: updates }, { arrayFilters });
+      const freshRoom = await MemoryRoom.findById(room._id);
+      if (!freshRoom) return sendFailure(res, 404, "The game room no longer exists");
+      if (eventName === "game:reconnect" || staleUserIds.length) {
+        await broadcastRoom(freshRoom);
+      }
+      return res.json({ ok: true, ...resultFor(freshRoom, userId) });
+    }
+
+    const presenceChanged = markStalePlayers(room);
     player.connected = true;
     player.lastSeenAt = new Date();
 
-    if (eventName === "game:heartbeat") {
-      await room.save();
-      if (presenceChanged) await broadcastRoom(room);
-      return res.json({ ok: true, ...resultFor(room, userId) });
-    }
-
-    if (eventName === "game:reconnect") {
-      if (player.eliminated) return sendFailure(res, 403, "You are no longer in this game");
-      if (room.phase === "playing" && !room.currentTurnId) room.currentTurnId = userId;
-      room.notice = `${username} reconnected.`;
-    } else if (eventName === "game:draw") {
+    if (eventName === "game:draw") {
       if (room.phase !== "playing") return sendFailure(res, 409, "The game is not ready for a gift draw");
       if (room.currentTurnId !== userId) return sendFailure(res, 403, "It is not your turn");
       if (room.pending?.card) return sendFailure(res, 409, "Resolve the current gift before drawing another");
