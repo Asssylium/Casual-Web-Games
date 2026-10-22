@@ -268,7 +268,7 @@ function acceptGift(room, player, pending, giver) {
   room.lastReveal.penaltyPlayerName = player.username;
   room.lastReveal.penaltyCount = player.penaltyCards.length;
   room.notice = `${player.username} accepted a false claim and receives a penalty point.`;
-  logEvent(room, `${player.username} accepted a false claim and received a penalty point (${player.penaltyCards.length}/3).`, "penalty");
+  logEvent(room, `${player.username} accepted ${giver?.username || "the giver"}'s false claim. The gift was ${card.name}; penalty ${player.penaltyCards.length}/3.`, "penalty");
   return outcome;
 }
 
@@ -547,7 +547,11 @@ router.post("/", async (req, res, next) => {
           room.notice = `${penalizedName} receives a penalty point.`;
           advanceTo(room, outcome === "lie" ? userId : giver.userId);
         }
-        logEvent(room, `${penalizedName} received a penalty point (${penalizedPlayer.penaltyCards.length}/3).`, "penalty");
+        logEvent(
+          room,
+          `${player.username} called bluff: the gift was ${pending.card.name}, not ${pending.claimedName}. ${penalizedName} received a penalty point (${penalizedPlayer.penaltyCards.length}/3).`,
+          "penalty"
+        );
         room.pending = undefined;
       }
     } else if (eventName === "game:leave") {
