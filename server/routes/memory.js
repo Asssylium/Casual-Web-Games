@@ -147,9 +147,6 @@ function createGift(card) {
   return {
     ...card,
     id: crypto.randomUUID(),
-    direction: card.direction === "both"
-      ? (crypto.randomInt(2) === 0 ? "left" : "right")
-      : card.direction,
   };
 }
 
@@ -180,6 +177,7 @@ function beginMemoryPhase(room, startingPlayerId) {
     player.hand = [gifts[index]];
     player.penaltyCards = [];
     player.blockedCardId = null;
+    player.lastGiftGiverId = null;
   });
   room.drawPile = gifts.slice(room.players.length);
   room.drawnCard = undefined;
@@ -425,7 +423,7 @@ router.post("/", async (req, res, next) => {
       if (room.phase !== "playing") return sendFailure(res, 409, "The game is not accepting a pass");
       if (room.currentTurnId !== userId) return sendFailure(res, 403, "It is not your turn");
       if (room.pending?.card) return sendFailure(res, 409, "A card is already being considered");
-      const { claimedName } = payload;
+      const { claimedName, direction } = payload;
       const gift = giftToPass(room, player, userId);
       if (!gift) return sendFailure(res, 409, "Draw a gift or pass your oldest gift first");
       const { card } = gift;
@@ -433,7 +431,11 @@ router.post("/", async (req, res, next) => {
       if (!claim || claim.length > 40) {
         return sendFailure(res, 400, "Enter a claim between 1 and 40 characters");
       }
-      const receiver = findTarget(room, player, card.direction);
+      const passDirection = card.direction === "both" ? direction : card.direction;
+      if (passDirection !== "left" && passDirection !== "right") {
+        return sendFailure(res, 400, "Choose a direction for this gift");
+      }
+      const receiver = findTarget(room, player, passDirection);
       if (!receiver) return sendFailure(res, 409, "There is no player in that direction");
       if (gift.isDrawnGift) {
         room.drawnCard = undefined;
@@ -441,7 +443,7 @@ router.post("/", async (req, res, next) => {
       } else {
         player.hand.shift();
       }
-      room.pending = { card, fromId: userId, toId: receiver.userId, claimedName: claim, direction: card.direction };
+      room.pending = { card, fromId: userId, toId: receiver.userId, claimedName: claim, direction: passDirection };
       room.lastReveal = null;
       room.notice = `${player.username} passed a card to ${receiver.username}.`;
     } else if (eventName === "game:accept" || eventName === "game:challenge") {
@@ -456,6 +458,7 @@ router.post("/", async (req, res, next) => {
       if (eventName === "game:accept") {
         player.hand.push(pending.card);
         player.blockedCardId = pending.card.id;
+        player.lastGiftGiverId = pending.fromId;
         room.lastReveal = null;
         room.pending = undefined;
         room.notice = `${player.username} accepted the card.`;
@@ -518,6 +521,7 @@ module.exports = {
   createGift,
   refillGiftShop,
   giftToPass,
+  findTarget,
   beginMemoryPhase,
   awardPenalty,
 };

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 function directionText(direction) {
+  if (direction === "both") return "Pass left or right";
   return direction === "left" ? "Pass left" : "Pass right";
 }
 
@@ -174,6 +175,7 @@ export default function MemoryGame({ onBack, user }) {
   const [drawnCard, setDrawnCard] = useState(null);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [startingPlayerId, setStartingPlayerId] = useState(user.id);
+  const [passDirection, setPassDirection] = useState("");
   const [claimedName, setClaimedName] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -184,6 +186,7 @@ export default function MemoryGame({ onBack, user }) {
     setRoom(result.room || null);
     setHand(result.hand?.cards || []);
     setDrawnCard(result.hand?.drawnCard || null);
+    setPassDirection("");
   }
 
   async function loadGameState() {
@@ -376,11 +379,18 @@ export default function MemoryGame({ onBack, user }) {
   }
 
   function passGift() {
-    emitAction("game:pass", { claimedName }, () => setClaimedName(""));
+    emitAction("game:pass", { claimedName, direction: passDirection }, () => {
+      setClaimedName("");
+      setPassDirection("");
+    });
   }
 
   function startGame() {
     emitAction("game:start", { startingPlayerId });
+  }
+
+  function choosePassDirection(direction) {
+    setPassDirection(direction);
   }
 
   async function copyRoomCode() {
@@ -397,6 +407,7 @@ export default function MemoryGame({ onBack, user }) {
   const isHost = room?.hostId === user.id;
   const isMyTurn = room?.currentTurnId === user.id;
   const isReceiver = room?.pending?.toId === user.id;
+  const giftToPassNow = drawnCard || (hand.length > 1 ? hand[0] : null);
   const canLeaveRoom = !room || room.phase === "lobby" || room.phase === "finished";
 
   return (
@@ -608,6 +619,26 @@ export default function MemoryGame({ onBack, user }) {
                       </div>
                     ) : isMyTurn ? (
                       <>
+                        {giftToPassNow?.direction === "both" && (
+                          <div className="direction-options" role="group" aria-label="Choose pass direction">
+                            <button
+                              aria-pressed={passDirection === "left"}
+                              className="direction-option"
+                              onClick={() => choosePassDirection("left")}
+                              type="button"
+                            >
+                              ← Left
+                            </button>
+                            <button
+                              aria-pressed={passDirection === "right"}
+                              className="direction-option"
+                              onClick={() => choosePassDirection("right")}
+                              type="button"
+                            >
+                              Right →
+                            </button>
+                          </div>
+                        )}
                         <div className="hand-cards">
                           {hand.map((card, index) => (
                             <ObjectCard
@@ -639,10 +670,10 @@ export default function MemoryGame({ onBack, user }) {
                               />
                             </label>
                             <GameButton
-                              disabled={busy || !claimedName.trim()}
+                              disabled={busy || !claimedName.trim() || ((drawnCard || hand[0]).direction === "both" && !passDirection)}
                               onClick={passGift}
                             >
-                              Pass {directionText((drawnCard || hand[0]).direction).replace("Pass ", "")}
+                              Pass {passDirection || (drawnCard || hand[0]).direction}
                               <ArrowRight size={16} />
                             </GameButton>
                           </div>

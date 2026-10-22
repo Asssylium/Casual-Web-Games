@@ -9,6 +9,8 @@ const {
   refillGiftShop,
   giftToPass,
   awardPenalty,
+  findTarget,
+  createGift,
 } = require("../server/routes/memory");
 
 test("the route's card catalog is exported", () => {
@@ -94,7 +96,7 @@ test("a new game gives every player one gift and fills the gift shop", () => {
   assert.deepEqual(room.players.map((player) => player.hand.length), [1, 1]);
   assert.equal(room.drawPile.length, CARD_CATALOG.length - 2);
   assert.equal(room.currentTurnId, "p2");
-  assert.ok(room.players.flatMap((player) => player.hand).every((gift) => ["left", "right"].includes(gift.direction)));
+  assert.ok(room.players.flatMap((player) => player.hand).every((gift) => ["left", "right", "both"].includes(gift.direction)));
 });
 
 test("an empty gift shop refills with fresh uniquely identified gifts", () => {
@@ -119,6 +121,25 @@ test("a player with one gift must draw before passing", () => {
   const result = giftToPass({ drawnBy: null, drawnCard: null }, { hand: [{ id: "only" }] }, "p1");
 
   assert.equal(result, null);
+});
+
+test("left and right arrows target the adjacent eligible player", () => {
+  const room = {
+    players: [
+      { userId: "p1", connected: true },
+      { userId: "p2", connected: true },
+      { userId: "p3", connected: true },
+    ],
+  };
+
+  assert.equal(findTarget(room, room.players[1], "left").userId, "p1");
+  assert.equal(findTarget(room, room.players[1], "right").userId, "p3");
+});
+
+test("a two-way gift keeps its choice instead of receiving a random arrow", () => {
+  const gift = createGift({ name: "Basket", icon: "x", direction: "both" });
+
+  assert.equal(gift.direction, "both");
 });
 
 test("three penalty points end the game and retain tied lowest scorers", () => {
