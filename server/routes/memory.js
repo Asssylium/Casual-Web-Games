@@ -16,6 +16,7 @@ const PENALTY_LIMIT = 3;
 const GIFT_DIRECTIONS = ["left", "right", "both"];
 const ROOM_CODE_LENGTH = 5;
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const scheduledBotRooms = new Set();
 
 function roomChannel(code) {
   return `memory:${code}:state`;
@@ -343,6 +344,39 @@ function runMemoryBots(room) {
   return changed;
 }
 
+function botNeedsTurn(room) {
+  if (!["playing", "gift-reveal"].includes(room.phase)) return false;
+  if (room.phase === "gift-reveal") return isBot(playerById(room, room.drawnBy));
+  if (room.pending?.toId) return isBot(playerById(room, room.pending.toId));
+  return isBot(playerById(room, room.currentTurnId));
+}
+
+function scheduleBotTurn(room) {
+  if (!botNeedsTurn(room)) return;
+  const roomId = room._id.toString();
+  if (scheduledBotRooms.has(roomId)) return;
+  scheduledBotRooms.add(roomId);
+  const revealDelay = room.phase === "gift-reveal" && room.revealEndsAt
+    ? Math.max(350, room.revealEndsAt - Date.now() + 100)
+    : 650;
+  setTimeout(async () => {
+    scheduledBotRooms.delete(roomId);
+    try {
+      const freshRoom = await MemoryRoom.findById(roomId);
+      if (!freshRoom) return;
+      const phaseChanged = completeReveal(freshRoom);
+      const botChanged = runMemoryBots(freshRoom);
+      if (phaseChanged || botChanged) {
+        await freshRoom.save();
+        await broadcastRoom(freshRoom);
+      }
+      scheduleBotTurn(freshRoom);
+    } catch (error) {
+      console.error("Memory bot turn failed:", error);
+    }
+  }, revealDelay);
+}
+
 async function broadcastRoom(room) {
   await publishRoom(roomChannel(room.code), "game:state", publicState(room));
   await Promise.all(room.players.map((player) =>
@@ -374,6 +408,7 @@ async function saveAndReply(room, userId, res) {
     throw error;
   }
   await broadcastRoom(room);
+  scheduleBotTurn(room);
   return res.json({ ok: true, ...resultFor(room, userId) });
 }
 
@@ -672,4 +707,6 @@ module.exports = {
   beginMemoryPhase,
   awardPenalty,
   acceptGift,
+  runMemoryBots,
+  scheduleBotTurn,
 };

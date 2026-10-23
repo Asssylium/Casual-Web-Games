@@ -223,7 +223,6 @@ export default function MemoryGame({ onBack, user }) {
     setRoom(result.room || null);
     setHand(result.hand?.cards || []);
     setDrawnCard(result.hand?.drawnCard || null);
-    setPassDirection("");
   }
 
   async function loadGameState() {
@@ -580,6 +579,7 @@ export default function MemoryGame({ onBack, user }) {
             <span className="round-label">
               {room.phase === "lobby" ? "Lobby" : `Round ${room.round}`}
             </span>
+            {room.phase === "playing" && <span className="table-toolbar-label">The table</span>}
             {room.phase !== "lobby" && (
               <span className="gift-shop-count">Gift shop · {room.giftShopCount}</span>
             )}
