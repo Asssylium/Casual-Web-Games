@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import MemoryGame from "./MemoryGame";
 import SecretHitlerGame from "./SecretHitlerGame";
+import en from "./locales/en.json";
+import vie from "./locales/vie.json";
 
 async function request(url, options = {}) {
   const response = await fetch(url, {
@@ -43,7 +45,7 @@ const games = [
   { title: "Four in a Row", category: "Board", icon: "🔴" },
 ];
 
-function GameMenu({ onLaunch }) {
+function GameMenu({ onLaunch, strings }) {
   const [category, setCategory] = useState("All games");
   const visibleGames = category === "All games"
     ? games
@@ -54,9 +56,9 @@ function GameMenu({ onLaunch }) {
       <div className="menu-heading">
         <div>
           <div className="eyebrow">Arcade Club</div>
-          <h1>Choose your game</h1>
+          <h1>{strings.chooseGame}</h1>
         </div>
-        <span className="game-count">{visibleGames.length} games</span>
+        <span className="game-count">{strings.gamesCount.replace("{count}", visibleGames.length)}</span>
       </div>
       <div className="category-filter" aria-label="Filter games by category">
         {gameCategories.map((item) => (
@@ -85,7 +87,7 @@ function GameMenu({ onLaunch }) {
               {game.icon}
             </span>
             <h2>{game.title}</h2>
-            {!game.available && <span className="coming-soon">Coming soon</span>}
+            {!game.available && <span className="coming-soon">{strings.comingSoon}</span>}
           </button>
         ))}
       </div>
@@ -93,7 +95,7 @@ function GameMenu({ onLaunch }) {
   );
 }
 
-function Dashboard({ user, onClose }) {
+function Dashboard({ user, onClose, strings }) {
   return (
     <>
       <button
@@ -105,7 +107,7 @@ function Dashboard({ user, onClose }) {
       <aside aria-label="Player dashboard" className="dashboard-sidebar" id="dashboard-sidebar">
         <div className="sidebar-heading">
           <div>
-            <div className="eyebrow">Player dashboard</div>
+            <div className="eyebrow">{strings.playerDashboard}</div>
             <h2>{user.username}</h2>
           </div>
           <button aria-label="Close dashboard" className="sidebar-close" onClick={onClose} type="button">
@@ -114,17 +116,17 @@ function Dashboard({ user, onClose }) {
         </div>
         <p className="sidebar-email">{user.email}</p>
         <div className="stats">
-          <Stat label="Games played" value={user.stats.gamesPlayed} />
-          <Stat label="Wins" value={user.stats.wins} />
-          <Stat label="Losses" value={user.stats.losses} />
-          <Stat label="High score" value={user.stats.highScore} />
+          <Stat label={strings.gamesPlayed} value={user.stats.gamesPlayed} />
+          <Stat label={strings.wins} value={user.stats.wins} />
+          <Stat label={strings.losses} value={user.stats.losses} />
+          <Stat label={strings.highScore} value={user.stats.highScore} />
         </div>
       </aside>
     </>
   );
 }
 
-function AuthCard({ onAuthenticated }) {
+function AuthCard({ onAuthenticated, strings }) {
   const googleButtonRef = useRef(null);
   const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
@@ -236,12 +238,12 @@ function AuthCard({ onAuthenticated }) {
 
   return (
     <section className="card">
-      <div className="eyebrow">Welcome to the club</div>
-      <h2>{signingUp ? "Create your account" : "Sign in"}</h2>
+      <div className="eyebrow">{strings.welcome}</div>
+      <h2>{signingUp ? strings.createAccount : strings.signIn}</h2>
       <p className="muted">
         {signingUp
-          ? "Your player profile is just a few details away."
-          : "Pick up where you left off."}
+          ? strings.profileIntro
+          : strings.profileIntro}
       </p>
       <div className="tabs" role="tablist" aria-label="Account action">
         <button
@@ -251,7 +253,7 @@ function AuthCard({ onAuthenticated }) {
           role="tab"
           type="button"
         >
-          Log in
+          {strings.login}
         </button>
         <button
           aria-selected={signingUp}
@@ -260,14 +262,14 @@ function AuthCard({ onAuthenticated }) {
           role="tab"
           type="button"
         >
-          Create account
+          {strings.createAccount}
         </button>
       </div>
       <form onSubmit={handleSubmit}>
         {signingUp ? (
           <>
             <label className="field">
-              <span>Username</span>
+              <span>{strings.username}</span>
               <input
                 autoComplete="username"
                 maxLength={24}
@@ -278,7 +280,7 @@ function AuthCard({ onAuthenticated }) {
               />
             </label>
             <label className="field">
-              <span>Email</span>
+              <span>{strings.email}</span>
               <input
                 autoComplete="email"
                 maxLength={254}
@@ -290,7 +292,7 @@ function AuthCard({ onAuthenticated }) {
           </>
         ) : (
           <label className="field">
-            <span>Username or email</span>
+          <span>{strings.usernameOrEmail}</span>
             <input
               autoComplete="username"
               maxLength={254}
@@ -300,7 +302,7 @@ function AuthCard({ onAuthenticated }) {
           </label>
         )}
         <label className="field">
-          <span>Password</span>
+          <span>{strings.password}</span>
           <input
             autoComplete={signingUp ? "new-password" : "current-password"}
             maxLength={72}
@@ -311,13 +313,13 @@ function AuthCard({ onAuthenticated }) {
           />
         </label>
         <button className="primary" disabled={submitting} type="submit">
-          {submitting ? "Please wait..." : signingUp ? "Create account" : "Log in"}
+          {submitting ? strings.pleaseWait : signingUp ? strings.createAccount : strings.login}
         </button>
         <p className="message" role="status" aria-live="polite">
           {message}
         </p>
       </form>
-      <div className="auth-divider"><span>or continue with</span></div>
+      <div className="auth-divider"><span>{strings.continueWith}</span></div>
       <div className="google-button" ref={googleButtonRef} aria-busy={!googleReady} />
     </section>
   );
@@ -331,6 +333,8 @@ export default function App() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
+  const [language, setLanguage] = useState(() => window.localStorage.getItem("app-language") || "en");
+  const strings = language === "vie" ? vie : en;
 
   useEffect(() => {
     let active = true;
@@ -380,6 +384,7 @@ export default function App() {
           </span>
           Arcade Club
         </div>
+        <label className="app-language"><span>{strings.language}</span><select onChange={(event) => { const next = event.target.value; window.localStorage.setItem("app-language", next); setLanguage(next); }} value={language}><option value="en">{strings.english}</option><option value="vie">{strings.vietnamese}</option></select></label>
         {user ? (
           <div className="header-account">
             <button
@@ -405,7 +410,7 @@ export default function App() {
               onClick={logout}
               type="button"
             >
-              {loggingOut ? "Logging out..." : "Log out"}
+              {loggingOut ? strings.loggingOut : strings.logout}
             </button>
           </div>
         ) : (
@@ -415,33 +420,32 @@ export default function App() {
       <main className={user ? "main-game" : "main-auth"}>
         {loading ? (
           <p aria-live="polite" className="muted">
-            Loading your player profile...
+            {strings.loadingProfile}
           </p>
         ) : user ? (
           <>
             {selectedGame === "Memory Pass" ? (
-              <MemoryGame onBack={() => setSelectedGame(null)} user={user} />
+              <MemoryGame language={language} onBack={() => setSelectedGame(null)} user={user} />
             ) : selectedGame === "Secret Hitler" ? (
-              <SecretHitlerGame onBack={() => setSelectedGame(null)} user={user} />
+              <SecretHitlerGame language={language} onBack={() => setSelectedGame(null)} user={user} />
             ) : (
-              <GameMenu onLaunch={setSelectedGame} />
+              <GameMenu onLaunch={setSelectedGame} strings={strings} />
             )}
             {dashboardOpen && (
-              <Dashboard onClose={() => setDashboardOpen(false)} user={user} />
+              <Dashboard onClose={() => setDashboardOpen(false)} strings={strings} user={user} />
             )}
           </>
         ) : (
           <section className="layout" aria-label="Account access">
             <div className="intro">
-              <div className="eyebrow">A little friendly competition</div>
+              <div className="eyebrow">{strings.friendlyCompetition}</div>
               <h1>
-                Good games.
+                {strings.goodGames}
                 <br />
-                <span>Great company.</span>
+                <span>{strings.greatCompany}</span>
               </h1>
               <p>
-                Make your player profile, keep your stats together, and get
-                ready to play your favorite casual games with friends.
+                {strings.profileIntro}
               </p>
               <div className="pills">
                 <span className="pill">🎮 One player profile</span>
@@ -450,7 +454,7 @@ export default function App() {
               </div>
             </div>
             <div>
-              <AuthCard onAuthenticated={setUser} />
+              <AuthCard onAuthenticated={setUser} strings={strings} />
               {statusError && (
                 <p className="message" role="alert">
                   {statusError}
@@ -465,7 +469,7 @@ export default function App() {
           </p>
         )}
       </main>
-      <footer>Made for game nights and friendly rivalries.</footer>
+      <footer>{strings.footer}</footer>
     </div>
   );
 }

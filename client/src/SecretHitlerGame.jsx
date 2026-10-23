@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Ably from "ably";
+import en from "./locales/en.json";
+import vie from "./locales/vie.json";
 import {
   ArrowLeft,
   Check,
@@ -20,6 +22,11 @@ import {
 
 const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 10;
+const LOCALES = { en, vie };
+
+function translate(strings, key, values = {}) {
+  return String(strings[key] || en[key] || key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? `{${name}}`);
+}
 
 async function postAction(eventName, payload = {}) {
   const response = await fetch("/api/secret-hitler", {
@@ -131,11 +138,11 @@ function policyDetail(team, index, playerCount, enacted) {
   return { team: "Fascist", index, enacted, title: "Fascist policy", description: effects[index - 1] };
 }
 
-function PolicyTrack({ room, onPolicyClick }) {
+function PolicyTrack({ room, onPolicyClick, t }) {
   return (
     <div className="sh-tracks">
       <div className="sh-track sh-track-liberal">
-        <div className="sh-track-heading"><span>Liberal</span><strong>{room.liberalPolicies}/5</strong></div>
+        <div className="sh-track-heading"><span>{t("liberal")}</span><strong>{room.liberalPolicies}/5</strong></div>
         <div className="sh-policy-slots">
           {Array.from({ length: 5 }, (_, index) => (
             <button
@@ -149,7 +156,7 @@ function PolicyTrack({ room, onPolicyClick }) {
         </div>
       </div>
       <div className="sh-track sh-track-fascist">
-        <div className="sh-track-heading"><span>Fascist</span><strong>{room.fascistPolicies}/6</strong></div>
+        <div className="sh-track-heading"><span>{t("fascist")}</span><strong>{room.fascistPolicies}/6</strong></div>
         <div className="sh-policy-slots">
           {Array.from({ length: 6 }, (_, index) => (
             <button
@@ -178,27 +185,27 @@ function VoteResults({ results, players }) {
   );
 }
 
-function RoomChat({ messages = [], onSend, sending, value, onChange, scrollRef, userId }) {
+function RoomChat({ messages = [], onSend, sending, value, onChange, scrollRef, userId, t }) {
   return (
     <section aria-label="Room chat" className="sh-chat">
-      <div className="sh-side-heading"><span className="sh-eyebrow">Table chat</span><MessageCircle aria-hidden="true" size={16} /></div>
+      <div className="sh-side-heading"><span className="sh-eyebrow">{t("tableChat")}</span><MessageCircle aria-hidden="true" size={16} /></div>
       <div aria-live="polite" className="sh-chat-messages" ref={scrollRef}>
-        {messages.length === 0 ? <p className="sh-chat-empty">Messages from everyone at this table appear here.</p> : messages.map((message) => (
+        {messages.length === 0 ? <p className="sh-chat-empty">{t("chatEmpty")}</p> : messages.map((message) => (
           <div className={`sh-chat-message${message.senderId === userId ? " is-own" : ""}`} key={message.id}>
-            <strong>{message.senderName}{message.senderId === userId ? " (you)" : ""}</strong>
+            <strong>{message.senderName}{message.senderId === userId ? ` (${t("you")})` : ""}</strong>
             <span>{message.text}</span>
           </div>
         ))}
       </div>
       <form className="sh-chat-form" onSubmit={(event) => { event.preventDefault(); onSend(); }}>
-        <input aria-label="Chat message" disabled={sending} maxLength={300} onChange={(event) => onChange(event.target.value)} placeholder="Discuss the table…" value={value} />
-        <button aria-label="Send message" disabled={sending || !value.trim()} type="submit"><Send size={15} /></button>
+        <input aria-label={t("sendMessage")} disabled={sending} maxLength={300} onChange={(event) => onChange(event.target.value)} placeholder={t("chatPlaceholder")} value={value} />
+        <button aria-label={t("sendMessage")} disabled={sending || !value.trim()} type="submit"><Send size={15} /></button>
       </form>
     </section>
   );
 }
 
-export default function SecretHitlerGame({ onBack, user }) {
+export default function SecretHitlerGame({ language = "en", onBack, user }) {
   const clientRef = useRef(null);
   const rulesDialogRef = useRef(null);
   const policyDialogRef = useRef(null);
@@ -217,6 +224,8 @@ export default function SecretHitlerGame({ onBack, user }) {
   const [selectedPolicy, setSelectedPolicy] = useState(null);
   const [chatText, setChatText] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const strings = LOCALES[language] || en;
+  const t = (key, values) => translate(strings, key, values);
 
   useEffect(() => {
     const dialog = policyDialogRef.current;
@@ -430,12 +439,12 @@ export default function SecretHitlerGame({ onBack, user }) {
     <section className="secret-hitler-game" aria-label="Secret Hitler game">
       <div className="sh-topbar">
         <button className="sh-back" onClick={canLeave ? leaveRoom : onBack} type="button">
-          <ArrowLeft aria-hidden="true" size={16} /> Games
+          <ArrowLeft aria-hidden="true" size={16} /> {t("games")}
         </button>
-        <button className="sh-rules-button" onClick={openRules} type="button"><Info aria-hidden="true" size={16} /> Rules</button>
+        <button className="sh-rules-button" onClick={openRules} type="button"><Info aria-hidden="true" size={16} /> {t("rules")}</button>
         <div className={`sh-connection${connected ? " is-connected" : ""}`}>
           {connected ? <Wifi size={15} /> : realtimeAvailable ? <WifiOff size={15} /> : room ? <WifiOff size={15} /> : <Wifi size={15} />}
-          {connected ? "Live table" : room ? "Polling sync" : "Ready"}
+          {connected ? t("liveTable") : room ? t("pollingSync") : t("ready")}
         </div>
       </div>
       {error && <p className="sh-error" role="alert">{error}</p>}
@@ -502,7 +511,7 @@ export default function SecretHitlerGame({ onBack, user }) {
             )}
           </div>
 
-          <PolicyTrack room={room} onPolicyClick={setSelectedPolicy} />
+          <PolicyTrack room={room} onPolicyClick={setSelectedPolicy} t={t} />
           <div className="sh-table-layout">
             <aside className="sh-chat-panel">
               <RoomChat
@@ -513,6 +522,7 @@ export default function SecretHitlerGame({ onBack, user }) {
                 sending={chatBusy}
                 userId={user.id}
                 value={chatText}
+                t={t}
               />
             </aside>
             <section className="sh-main-panel">
@@ -650,10 +660,10 @@ export default function SecretHitlerGame({ onBack, user }) {
             </section>
 
             <aside className="sh-side-panel">
-              <div className="sh-side-heading"><span className="sh-eyebrow">The table</span><strong>{alive.length} active</strong></div>
+              <div className="sh-side-heading"><span className="sh-eyebrow">{t("theTable")}</span><strong>{t("active", { count: alive.length })}</strong></div>
               <PlayerSeats room={room} userId={user.id} />
-              <div className="sh-tracker"><span>Failed governments</span><div>{[0, 1, 2].map((step) => <i className={step < room.electionTracker ? "is-filled" : ""} key={step} />)}</div></div>
-              <div className="sh-deck-counts"><span>Draw pile <strong>{room.drawPileCount}</strong></span><span>Discard pile <strong>{room.discardPileCount}</strong></span></div>
+              <div className="sh-tracker"><span>{t("failedGovernments")}</span><div>{[0, 1, 2].map((step) => <i className={step < room.electionTracker ? "is-filled" : ""} key={step} />)}</div></div>
+              <div className="sh-deck-counts"><span>{t("drawPile")} <strong>{room.drawPileCount}</strong></span><span>{t("discardPile")} <strong>{room.discardPileCount}</strong></span></div>
               {secret?.privateIntel?.length > 0 && <div className="sh-private-intel">
                 <span className="sh-eyebrow">Your private information</span>
                 {secret.privateIntel.map((intel, index) => <p key={`${intel.type}-${index}`}>

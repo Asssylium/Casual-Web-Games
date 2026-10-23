@@ -30,6 +30,8 @@ header { min-height: 88px; display: flex; align-items: center; justify-content: 
 .brand { display: flex; gap: 11px; align-items: center; font-weight: 800; letter-spacing: -.04em; font-size: 1.15rem; }
 .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; background: linear-gradient(135deg, #a78bfa, #38bdf8); color: #101326; }
 .header-account { display: flex; align-items: center; gap: 14px; }
+.app-language { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: #9ba7bc; font-size: .72rem; }
+.app-language select { min-height: 32px; padding: 4px 7px; border: 1px solid #ffffff25; border-radius: 7px; background: #111827; color: #f8fafc; }
 .profile-summary { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dashboard-trigger { padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
 .dashboard-trigger:hover .profile-avatar, .dashboard-trigger[aria-expanded="true"] .profile-avatar { border-color: #a78bfa; background: #342b55; }
@@ -396,7 +398,7 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
 .shell-secret-game .brand-mark { background: #d7ba76; color: #1b201e; }
 .shell-secret-game .eyebrow { color: var(--sh-gold); }
 .shell-secret-game header { border-bottom-color: #f0ecdf18; background: #131715e8; }
-.secret-hitler-game { width: min(100%, 1200px); margin: 0 auto; color: var(--sh-paper); }
+.secret-hitler-game { width: min(calc(100% - clamp(24px, 4vw, 96px)), 1680px); margin: 0 auto; color: var(--sh-paper); }
 .sh-topbar { display: flex; align-items: center; justify-content: space-between; min-height: 38px; margin-bottom: 12px; }
 .sh-back, .sh-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--sh-line); border-radius: 6px; background: #ffffff08; color: var(--sh-paper); }
 .sh-back:hover, .sh-icon-button:hover { border-color: #d7ba7680; background: #d7ba7610; }
@@ -451,11 +453,11 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
 .sh-policy-slot:hover, .sh-policy-slot:focus-visible { border-color: var(--sh-gold); outline: 0; box-shadow: 0 0 0 2px #d7ba7633; }
 .sh-track-liberal .sh-policy-slots .is-filled { border-color: var(--sh-green); background: var(--sh-green); }
 .sh-track-fascist .sh-policy-slots .is-filled { border-color: var(--sh-red); background: var(--sh-red); }
-.sh-table-layout { display: grid; grid-template-columns: minmax(210px, .58fr) minmax(0, 1.55fr) minmax(255px, .7fr); gap: 14px; align-items: stretch; }
+.sh-table-layout { display: grid; grid-template-columns: minmax(220px, .45fr) minmax(0, 1.9fr) minmax(260px, .55fr); gap: 14px; align-items: stretch; }
 .sh-main-panel, .sh-side-panel, .sh-chat-panel { min-width: 0; padding: clamp(16px, 2.5vw, 26px); border: 1px solid var(--sh-line); background: var(--sh-panel); }
-.sh-main-panel { display: grid; align-content: start; gap: 16px; min-height: 355px; }
+.sh-main-panel { display: grid; align-content: start; gap: 16px; min-height: clamp(420px, calc(100vh - 260px), 680px); }
 .sh-side-panel { display: grid; align-content: start; gap: 12px; }
-.sh-chat-panel { min-height: 355px; }
+.sh-chat-panel { min-height: clamp(420px, calc(100vh - 260px), 680px); }
 .sh-panel-title { display: flex; align-items: flex-start; gap: 12px; }
 .sh-title-icon { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border: 1px solid #d7ba7640; color: var(--sh-gold); }
 .sh-panel-title h2 { margin: 4px 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.25rem; text-transform: capitalize; }
@@ -542,6 +544,7 @@ button.sh-player:hover { border-color: #d7ba7680; }
   .sh-entry-copy h1 { font-size: clamp(2.8rem, 10vw, 4.3rem); }
   .sh-table-layout { grid-template-columns: 1fr; }
   .sh-side-panel { grid-row: 1; }
+  .sh-main-panel, .sh-side-panel, .sh-chat-panel { min-height: auto; }
   .sh-side-panel > .sh-player-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -555,7 +558,7 @@ button.sh-player:hover { border-color: #d7ba7680; }
   .sh-entry-copy { min-height: 320px; padding: 28px 22px; }
   .sh-entry-action { padding: 22px; }
   .sh-tracks { grid-template-columns: 1fr; }
-  .sh-main-panel, .sh-side-panel { padding: 15px 12px; }
+  .sh-main-panel, .sh-side-panel, .sh-chat-panel { padding: 15px 12px; }
   .sh-side-panel > .sh-player-list { grid-template-columns: 1fr; }
   .sh-player { grid-template-columns: 26px minmax(0, 1fr) auto 16px; gap: 6px; padding: 6px; }
   .sh-seat-name { font-size: .76rem; }
