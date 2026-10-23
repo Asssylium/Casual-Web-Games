@@ -176,12 +176,12 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .reveal-card strong { font-size: .88rem; }
 .reveal-card > span:not(.reveal-card-icon) { color: #c4b5fd; font-size: .68rem; }
 .reveal-card small { color: #9ba7bc; font-size: .72rem; overflow-wrap: anywhere; }
-.player-orbit { position: relative; width: min(100%, 1080px); min-height: 580px; margin: 0 auto; overflow: hidden; border: 1px solid #ffffff13; border-radius: 48%; background: radial-gradient(ellipse at center, #28245b 0, #171b38 38%, #0c1222 72%); box-shadow: inset 0 0 70px #080b1c; }
-.orbit-ring { position: absolute; inset: 14% 18%; border: 1px dashed #a78bfa50; border-radius: 50%; box-shadow: 0 0 0 18px #a78bfa08, 0 0 0 44px #38bdf805; }
-.orbit-center { position: absolute; top: 50%; left: 50%; display: grid; justify-items: center; gap: 7px; transform: translate(-50%, -50%); color: #e3e7f2; text-align: center; pointer-events: none; }
-.orbit-center-mark { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #a78bfa55; border-radius: 12px; background: #a78bfa18; color: #c4b5fd; }
-.orbit-center strong { font-family: "Space Grotesk", "Trebuchet MS", sans-serif; font-size: .95rem; }
-.orbit-center > span:last-child { color: #9ba7bc; font-size: .7rem; }
+.player-orbit { position: relative; width: min(100%, 1080px); min-height: 580px; margin: 0 auto; overflow: hidden; border: 1px solid #ffffff13; border-radius: 22px; background: radial-gradient(ellipse at center, #24204d 0, #161a35 45%, #0c1222 78%); box-shadow: inset 0 0 70px #080b1c; }
+.orbit-ring { position: absolute; inset: 11% 12%; border: 1px dashed #a78bfa50; border-radius: 50%; box-shadow: 0 0 0 18px #a78bfa08, 0 0 0 44px #38bdf805; }
+.orbit-center { position: absolute; top: 50%; left: 50%; display: grid; width: min(39%, 380px); aspect-ratio: 1.55; justify-items: center; align-content: center; gap: 7px; border: 1px solid #e9d8aa4d; border-radius: 50%; background: radial-gradient(ellipse at 38% 28%, #51422d, #2d261f 68%); box-shadow: inset 0 0 0 9px #d8bd7440, inset 0 0 34px #100d09, 0 16px 36px #0008; transform: translate(-50%, -50%); color: #f6eedc; text-align: center; pointer-events: none; }
+.orbit-center-mark { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #f0d88a70; border-radius: 50%; background: #f0d88a14; color: #f7d774; }
+.orbit-center strong { font-family: "Space Grotesk", "Trebuchet MS", sans-serif; font-size: .95rem; letter-spacing: .04em; text-transform: uppercase; }
+.orbit-center > span:last-child { color: #d8cba9; font-size: .7rem; }
 .orbit-seat { position: absolute; z-index: 1; display: grid; justify-items: center; width: clamp(112px, 16vw, 158px); min-height: 76px; padding: 9px 10px; border: 1px solid #ffffff22; border-radius: 13px; background: #171d30; box-shadow: 0 12px 26px #0007; text-align: center; transform: translate(-50%, -50%); transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
 .orbit-avatar { position: relative; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -24px; border: 2px solid #c4b5fd; border-radius: 50%; background: #38315a; color: #f2f4e9; font-size: .8rem; font-weight: 800; box-shadow: 0 0 0 4px #171d30; }
 .orbit-name { display: block; max-width: 100%; margin-top: 5px; overflow: hidden; color: #e8eee3; font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -207,14 +207,14 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .orbit-direction { display: inline-flex; align-items: center; gap: 4px; color: #41543a; font-size: .59rem; font-weight: 700; }
 .orbit-target-label { position: absolute; right: -5px; bottom: -11px; padding: 4px 7px; border-radius: 99px; background: #a78bfa; color: #171328; font-size: .6rem; font-weight: 800; white-space: nowrap; }
 .orbit-pass-direction { position: absolute; z-index: 3; bottom: 13px; left: 50%; display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border: 1px solid #a78bfa77; border-radius: 999px; background: #171d30; color: #c4b5fd; font-size: .72rem; transform: translateX(-50%); }
-.player-orbit-two { min-height: 420px; width: min(100%, 900px); border-radius: 20px; }
-.player-orbit-two .orbit-ring { inset: 28% 13%; }
-.player-orbit-two .orbit-center { transform: translate(-50%, -50%) scale(.85); }
+.player-orbit-two { min-height: 420px; width: min(100%, 900px); }
+.player-orbit-two .orbit-ring { inset: 22% 13%; }
+.player-orbit-two .orbit-center { width: min(34%, 280px); }
 .playing-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 .live-table-panel { display: grid; gap: 10px; min-width: 0; padding: 10px; border: 1px solid #ffffff18; border-radius: 12px; background: #0c1220; }
 .live-table-panel .live-table-heading { display: none; }
 .live-table-panel .table-panel { order: 0; }
-.live-table-panel .player-orbit { width: 100%; min-height: clamp(420px, 66vh, 720px); border-radius: 20px; }
+.live-table-panel .player-orbit { width: 100%; min-height: clamp(420px, 62vh, 640px); }
 .turn-reopen-button { justify-self: center; min-width: 190px; }
 .turn-panel, .table-panel, .winner-panel { padding: 20px; border: 1px solid #ffffff18; border-radius: 13px; background: #0c1220; }
 .turn-panel-heading { margin-bottom: 18px; }

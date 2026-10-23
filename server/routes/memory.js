@@ -301,8 +301,8 @@ function runMemoryBots(room) {
   for (let step = 0; step < 12; step += 1) {
     completeReveal(room);
     if (room.phase !== "playing") return changed;
-    const receiver = room.pending && playerById(room, room.pending.toId);
-    if (room.pending && isBot(receiver)) {
+    const receiver = room.pending?.card && playerById(room, room.pending.toId);
+    if (room.pending?.card && isBot(receiver)) {
       const pending = room.pending;
       const giver = playerById(room, pending.fromId);
       if (coin(0.3)) {
@@ -321,7 +321,7 @@ function runMemoryBots(room) {
       continue;
     }
     const bot = playerById(room, room.currentTurnId);
-    if (!isBot(bot) || room.pending) return changed;
+    if (!isBot(bot) || room.pending?.card) return changed;
     if (bot.hand.length === 1 && !room.drawnCard) {
       if (!room.drawPile.length) refillGiftShop(room);
       room.drawnCard = room.drawPile.shift();
@@ -347,7 +347,7 @@ function runMemoryBots(room) {
 function botNeedsTurn(room) {
   if (!["playing", "gift-reveal"].includes(room.phase)) return false;
   if (room.phase === "gift-reveal") return isBot(playerById(room, room.drawnBy));
-  if (room.pending?.toId) return isBot(playerById(room, room.pending.toId));
+  if (room.pending?.card) return isBot(playerById(room, room.pending.toId));
   return isBot(playerById(room, room.currentTurnId));
 }
 

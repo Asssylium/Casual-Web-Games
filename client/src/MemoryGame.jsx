@@ -81,7 +81,7 @@ function PlayerOrbit({ room, userId, revealCards = null, ownGifts = [], selected
       <div className="orbit-center">
         <span className="orbit-center-mark" aria-hidden="true">✦</span>
         <strong>{room.phase === "reveal" ? "Memorize" : "The table"}</strong>
-        <span>{count} players</span>
+          <span>{count} player{count === 1 ? "" : "s"}</span>
       </div>
       {players.map((player, index) => {
         const angle = (2 * Math.PI * index) / count;
