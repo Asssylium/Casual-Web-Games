@@ -168,6 +168,16 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .gift-reveal-content .object-card { width: min(100%, 210px); }
 .gift-reveal-content p { margin: 0; color: #b6bfd0; font-size: .86rem; }
 .gift-reveal-countdown { color: #fcd34d; font-size: .82rem; }
+.claim-result-dialog { width: min(420px, calc(100vw - 28px)); max-width: none; padding: 0; border: 1px solid #fbbf2466; border-radius: 16px; background: #151b2b; color: #f8fafc; box-shadow: 0 28px 90px #000a; }
+.claim-result-dialog::backdrop { background: #050812c9; backdrop-filter: blur(4px); }
+.claim-result-content { display: grid; justify-items: center; gap: 12px; padding: clamp(22px, 5vw, 30px); text-align: center; }
+.claim-result-content .result-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fbbf2420; color: #fde68a; font-size: 1.5rem; font-weight: 900; }
+.claim-result-content h2 { margin: 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.45rem; }
+.claim-result-content p { max-width: 340px; margin: 0; color: #cbd5e1; font-size: .9rem; line-height: 1.55; }
+.claim-result-content .object-card { width: min(100%, 210px); }
+.claim-result-penalty { color: #fda4af; font-size: .85rem; }
+.claim-result-lie .claim-result-content .result-icon { background: #86efac20; color: #86efac; }
+.claim-result-lie .claim-result-penalty { color: #fde68a; }
 .reveal-heading, .turn-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .reveal-countdown { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #fbbf2466; border-radius: 50%; color: #fcd34d; font-size: 1.1rem; }
 .reveal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

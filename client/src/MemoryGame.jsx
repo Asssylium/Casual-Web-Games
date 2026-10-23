@@ -205,6 +205,7 @@ export default function MemoryGame({ onBack, user }) {
   const ablyRef = useRef(null);
   const turnDialogRef = useRef(null);
   const giftRevealDialogRef = useRef(null);
+  const claimResultDialogRef = useRef(null);
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
@@ -468,7 +469,7 @@ export default function MemoryGame({ onBack, user }) {
     : null;
   const recipient = room?.players.find((player) => player.id === recipientId);
   const shouldOpenTurnDialog = Boolean(
-    room?.phase === "playing" && ((isMyTurn && !room.pending) || isReceiver)
+    room?.phase === "playing" && !room.lastReveal && ((isMyTurn && !room.pending) || isReceiver)
   );
   const canLeaveRoom = !room || room.phase === "lobby" || room.phase === "finished";
 
@@ -486,9 +487,42 @@ export default function MemoryGame({ onBack, user }) {
     if (!shouldShowGiftReveal && dialog.open) dialog.close();
   }, [shouldShowGiftReveal, room?.revealedGift?.id]);
 
+  const claimResultKey = room?.lastReveal && [
+    room.lastReveal.outcome,
+    room.lastReveal.fromName,
+    room.lastReveal.toName,
+    room.lastReveal.claimedName,
+    room.lastReveal.card?.name,
+    room.lastReveal.penaltyCount,
+  ].join(":");
+
+  useEffect(() => {
+    const dialog = claimResultDialogRef.current;
+    if (!dialog) return;
+    if (claimResultKey && !dialog.open) dialog.showModal();
+    if (!claimResultKey && dialog.open) dialog.close();
+  }, [claimResultKey]);
+
   function openTurnDialog() {
     if (!turnDialogRef.current?.open) turnDialogRef.current?.showModal();
   }
+
+  function closeClaimResult() {
+    claimResultDialogRef.current?.close();
+    if (isMyTurn || isReceiver) openTurnDialog();
+  }
+
+  const claimResult = room?.lastReveal;
+  const claimResultTitle = claimResult?.outcome === "accepted-lie"
+    ? "Bluff accepted"
+    : claimResult?.outcome === "truth"
+      ? "Correct claim rejected"
+      : "Bluff caught";
+  const claimResultCopy = claimResult?.outcome === "accepted-lie"
+    ? `${claimResult.toName} accepted “${claimResult.claimedName}”, but the gift was ${claimResult.card?.name}.`
+    : claimResult?.outcome === "truth"
+      ? `${claimResult.toName} called bluff, but ${claimResult.fromName}'s claim was correct.`
+      : `${claimResult.toName} called bluff and caught ${claimResult.fromName}'s false claim.`;
 
   return (
     <section className="memory-game" aria-label="Memory Pass game">
@@ -846,6 +880,27 @@ export default function MemoryGame({ onBack, user }) {
             <ObjectCard card={room.revealedGift} label={directionText(room.revealedGift.direction)} />
             <p>Remember the gift and its arrow.</p>
             <strong className="gift-reveal-countdown">Passing begins in {secondsLeft}s</strong>
+          </div>
+        )}
+      </dialog>
+      <dialog
+        aria-labelledby="claim-result-title"
+        className={`claim-result-dialog claim-result-${claimResult?.outcome || "unknown"}`}
+        ref={claimResultDialogRef}
+      >
+        {claimResult && (
+          <div className="claim-result-content" aria-live="assertive">
+            <span className="result-icon" aria-hidden="true">
+              {claimResult.outcome === "lie" ? "✦" : "!"}
+            </span>
+            <span className="eyebrow">Claim resolved</span>
+            <h2 id="claim-result-title">{claimResultTitle}</h2>
+            <p>{claimResultCopy}</p>
+            <ObjectCard card={claimResult.card} label={`Claimed: ${claimResult.claimedName}`} />
+            <strong className="claim-result-penalty">
+              {claimResult.penaltyPlayerName} receives a point ({claimResult.penaltyCount}/3)
+            </strong>
+            <GameButton onClick={closeClaimResult}>Continue</GameButton>
           </div>
         )}
       </dialog>
