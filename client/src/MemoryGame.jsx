@@ -210,7 +210,8 @@ export default function MemoryGame({ onBack, user }) {
   const giftRevealDialogRef = useRef(null);
   const claimResultDialogRef = useRef(null);
   const rulesDialogRef = useRef(null);
-  const audioContextRef = useRef(null);
+  const audioRefs = useRef({});
+  const openingSoundPlayedRef = useRef(false);
   const previousCueRef = useRef("");
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -227,40 +228,12 @@ export default function MemoryGame({ onBack, user }) {
   const [copied, setCopied] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
 
-  function prepareSound() {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return null;
-    audioContextRef.current ||= new AudioContext();
-    void audioContextRef.current.resume();
-    return audioContextRef.current;
-  }
-
   function playSound(kind) {
     if (!soundOn) return;
-    const context = prepareSound();
-    if (!context || context.state !== "running") return;
-    const playTone = (frequency, start, duration, type = "sine", volume = 0.07, endFrequency = frequency) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = type;
-      oscillator.frequency.setValueAtTime(frequency, start);
-      oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), start + duration);
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-      oscillator.connect(gain).connect(context.destination);
-      oscillator.start(start);
-      oscillator.stop(start + duration + 0.02);
-    };
-    if (kind === "damage") {
-      playTone(155, context.currentTime, 0.32, "sawtooth", 0.075, 58);
-      playTone(76, context.currentTime + 0.025, 0.42, "triangle", 0.1, 42);
-    }
-    if (kind === "win") {
-      [523, 659, 784].forEach((frequency, index) => {
-        playTone(frequency, context.currentTime + index * 0.11, 0.32, "triangle", 0.065, frequency * 1.03);
-      });
-    }
+    const audio = audioRefs.current[kind];
+    if (!audio) return;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
   }
 
   function applyGameState(result) {
@@ -291,6 +264,31 @@ export default function MemoryGame({ onBack, user }) {
     }
     return result;
   }
+
+  useEffect(() => {
+    audioRefs.current = {
+      damage: new Audio("/sounds/Loose%20sound%20take%204%20second.mp3"),
+      win: new Audio("/sounds/Memory%20Winning%20sound%20take%206%20second.mp3"),
+      opening: new Audio("/sounds/Opening%20sound%20for%20memory.mp3"),
+    };
+    Object.values(audioRefs.current).forEach((audio) => {
+      audio.preload = "auto";
+      audio.load();
+    });
+    return () => {
+      Object.values(audioRefs.current).forEach((audio) => {
+        audio.pause();
+        audio.src = "";
+      });
+      audioRefs.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialized || openingSoundPlayedRef.current) return;
+    openingSoundPlayedRef.current = true;
+    playSound("opening");
+  }, [initialized]);
 
   useEffect(() => {
     let cancelled = false;
@@ -385,6 +383,14 @@ export default function MemoryGame({ onBack, user }) {
     return () => window.clearInterval(heartbeat);
   }, [connected, room?.code]);
 
+  useEffect(() => {
+    if (!room?.code || ["lobby", "finished"].includes(room.phase)) return undefined;
+    const sync = window.setInterval(() => {
+      void loadGameState().catch(() => {});
+    }, 2_000);
+    return () => window.clearInterval(sync);
+  }, [room?.code, room?.phase]);
+
 
   useEffect(() => {
     if (!room || !["reveal", "gift-reveal"].includes(room.phase) || !room.revealEndsAt) {
@@ -425,6 +431,19 @@ export default function MemoryGame({ onBack, user }) {
     setBusy(true);
     void postGameAction(eventName, payload)
       .then((result) => {
+        const outcome = result.room?.lastReveal?.outcome;
+        if (["accepted-lie", "truth"].includes(outcome)) playSound("damage");
+        if (result.room?.phase === "finished") playSound("win");
+        if (result.room) {
+          previousCueRef.current = `${result.room.phase}:${result.room.currentTurnId}:${result.room.revealedGift?.id || ""}:${result.room.lastReveal ? [
+            result.room.lastReveal.outcome,
+            result.room.lastReveal.fromName,
+            result.room.lastReveal.toName,
+            result.room.lastReveal.claimedName,
+            result.room.lastReveal.card?.name,
+            result.room.lastReveal.penaltyCount,
+          ].join(":") : ""}`;
+        }
         applyGameState(result);
         setBusy(false);
         onSuccess?.(result);
@@ -677,7 +696,6 @@ export default function MemoryGame({ onBack, user }) {
               aria-label={soundOn ? "Mute game sounds" : "Enable game sounds"}
               className="sound-toggle"
               onClick={() => {
-                if (!soundOn) prepareSound();
                 setSoundOn((enabled) => !enabled);
               }}
               title={soundOn ? "Mute sounds" : "Enable sounds"}
