@@ -341,15 +341,6 @@ export default function MemoryGame({ onBack, user }) {
     return () => window.clearInterval(heartbeat);
   }, [connected, room?.code]);
 
-  useEffect(() => {
-    if (!room?.code || !room.players.some((player) => player.isBot) || ["lobby", "finished"].includes(room.phase)) return undefined;
-    const pollBots = window.setInterval(() => {
-      void postGameAction("game:bot-tick")
-        .then(applyGameState)
-        .catch((pollError) => setError(pollError.message || "Could not update the bots"));
-    }, 1000);
-    return () => window.clearInterval(pollBots);
-  }, [room?.code, room?.phase, room?.players]);
 
   useEffect(() => {
     if (!room || !["reveal", "gift-reveal"].includes(room.phase) || !room.revealEndsAt) {

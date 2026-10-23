@@ -297,51 +297,54 @@ function acceptGift(room, player, pending, giver) {
 }
 
 function runMemoryBots(room) {
-  let changed = false;
-  for (let step = 0; step < 12; step += 1) {
-    completeReveal(room);
-    if (room.phase !== "playing") return changed;
-    const receiver = room.pending?.card && playerById(room, room.pending.toId);
-    if (room.pending?.card && isBot(receiver)) {
-      const pending = room.pending;
-      const giver = playerById(room, pending.fromId);
-      if (coin(0.3)) {
-        const outcome = resolveClaim(pending.card, pending.claimedName);
-        const penalized = outcome === "lie" ? giver : receiver;
-        if (!penalized) return changed;
-        awardPenalty(room, penalized, pending.card);
-        room.pending = undefined;
-        if (room.phase !== "finished") advanceTo(room, outcome === "lie" ? receiver.userId : giver.userId);
-      } else {
-        acceptGift(room, receiver, pending, giver);
-        room.pending = undefined;
-        if (room.phase !== "finished") advanceTo(room, receiver.userId);
-      }
-      changed = true;
-      continue;
+  completeReveal(room);
+  if (room.phase !== "playing") return false;
+  const receiver = room.pending?.card && playerById(room, room.pending.toId);
+  if (room.pending?.card && isBot(receiver)) {
+    const pending = room.pending;
+    const giver = playerById(room, pending.fromId);
+    if (coin(0.3)) {
+      const outcome = resolveClaim(pending.card, pending.claimedName);
+      const penalized = outcome === "lie" ? giver : receiver;
+      if (!penalized) return false;
+      awardPenalty(room, penalized, pending.card);
+      room.pending = undefined;
+      if (room.phase !== "finished") advanceTo(room, outcome === "lie" ? receiver.userId : giver.userId);
+    } else {
+      acceptGift(room, receiver, pending, giver);
+      room.pending = undefined;
+      if (room.phase !== "finished") advanceTo(room, receiver.userId);
     }
-    const bot = playerById(room, room.currentTurnId);
-    if (!isBot(bot) || room.pending?.card) return changed;
-    if (bot.hand.length === 1 && !room.drawnCard) {
-      if (!room.drawPile.length) refillGiftShop(room);
-      room.drawnCard = room.drawPile.shift();
-      room.usedGiftNames.push(room.drawnCard.name);
-      room.drawnBy = bot.userId;
-      room.phase = "gift-reveal";
-      room.revealEndsAt = Date.now() + DRAW_REVEAL_MS;
-      changed = true;
-      return changed;
-    }
-    const gift = giftToPass(room, bot, bot.userId);
-    if (!gift) return changed;
-    const direction = resolvePassDirection(gift.card, gift.card.direction === "both" && coin(0.5) ? "right" : "left");
-    const target = findTarget(room, bot, direction);
-    if (!target) return changed;
-    if (gift.isDrawnGift) { room.drawnCard = undefined; room.drawnBy = null; } else bot.hand.shift();
-    room.pending = { card: gift.card, fromId: bot.userId, toId: target.userId, claimedName: coin(0.28) ? "Mysterious gift" : gift.card.name, direction };
-    changed = true;
+    return true;
   }
-  return changed;
+  const bot = playerById(room, room.currentTurnId);
+  if (!isBot(bot) || room.pending?.card) return false;
+  if (bot.hand.length === 1 && !room.drawnCard) {
+    if (!room.drawPile.length) refillGiftShop(room);
+    room.drawnCard = room.drawPile.shift();
+    room.usedGiftNames.push(room.drawnCard.name);
+    room.drawnBy = bot.userId;
+    room.phase = "gift-reveal";
+    room.revealEndsAt = Date.now() + DRAW_REVEAL_MS;
+    return true;
+  }
+  const gift = giftToPass(room, bot, bot.userId);
+  if (!gift) return false;
+  const direction = resolvePassDirection(gift.card, gift.card.direction === "both" && coin(0.5) ? "right" : "left");
+  const target = findTarget(room, bot, direction);
+  if (!target) return false;
+  if (gift.isDrawnGift) { room.drawnCard = undefined; room.drawnBy = null; } else bot.hand.shift();
+  const knownNames = room.players
+    .filter((player) => player.userId !== target.userId)
+    .flatMap((player) => player.hand)
+    .map((card) => card.name)
+    .filter((name) => name !== gift.card.name);
+  const claimedName = coin(0.28) && knownNames.length
+    ? knownNames[crypto.randomInt(knownNames.length)]
+    : gift.card.name;
+  room.pending = { card: gift.card, fromId: bot.userId, toId: target.userId, claimedName, direction };
+  room.notice = `${bot.username} passed a card to ${target.username}.`;
+  return true;
 }
 
 function botNeedsTurn(room) {
@@ -356,9 +359,10 @@ function scheduleBotTurn(room) {
   const roomId = room._id.toString();
   if (scheduledBotRooms.has(roomId)) return;
   scheduledBotRooms.add(roomId);
+  const thinkingDelay = 3_000 + crypto.randomInt(4_001);
   const revealDelay = room.phase === "gift-reveal" && room.revealEndsAt
-    ? Math.max(350, room.revealEndsAt - Date.now() + 100)
-    : 650;
+    ? Math.max(thinkingDelay, room.revealEndsAt - Date.now() + thinkingDelay)
+    : thinkingDelay;
   setTimeout(async () => {
     scheduledBotRooms.delete(roomId);
     try {
@@ -452,9 +456,11 @@ router.get("/", async (req, res, next) => {
     }
 
     const phaseChanged = completeReveal(room);
-    const botChanged = runMemoryBots(room);
-    if (phaseChanged || botChanged || presenceChanged) await saveAndReply(room, userId, res);
-    else res.json({ ok: true, ...resultFor(room, userId) });
+    if (phaseChanged || presenceChanged) await saveAndReply(room, userId, res);
+    else {
+      scheduleBotTurn(room);
+      res.json({ ok: true, ...resultFor(room, userId) });
+    }
   } catch (error) {
     next(error);
   }
@@ -559,9 +565,7 @@ router.post("/", async (req, res, next) => {
     }
 
     if (eventName === "game:bot-tick") {
-      const phaseChanged = completeReveal(room);
-      const botChanged = runMemoryBots(room);
-      if (phaseChanged || botChanged) return saveAndReply(room, userId, res);
+      scheduleBotTurn(room);
       return res.json({ ok: true, ...resultFor(room, userId) });
     }
 
@@ -683,7 +687,6 @@ router.post("/", async (req, res, next) => {
       return sendFailure(res, 400, "Unknown game action");
     }
 
-    runMemoryBots(room);
     return saveAndReply(room, userId, res);
   } catch (error) {
     next(error);
