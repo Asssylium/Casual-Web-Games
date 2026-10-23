@@ -1015,8 +1015,8 @@ export default function MemoryGame({ language = "en", onBack, user }) {
             <button aria-label="Close rules" className="turn-dialog-close" onClick={() => rulesDialogRef.current?.close()} type="button"><X size={18} /></button>
           </div>
           <section><h3>{strings.memoryGoalTitle}</h3><p>{strings.memoryGoal}</p></section>
-          <section><h3>Remember the table</h3><p>At the start, memorize every gift and its arrow. After the reveal, opponents’ gifts are face down, but their arrows remain visible.</p></section>
-          <section><h3>Your turn</h3><p>If you hold one gift, draw a new one. Pass the drawn gift, or when holding two gifts pass the oldest one, in its arrow’s direction. A double arrow lets you choose left or right.</p></section>
+          <section><h3>{strings.memoryRememberTitle}</h3><p>{strings.memoryRemember}</p></section>
+          <section><h3>{strings.memoryTurnTitle}</h3><p>{strings.memoryTurn}</p></section>
           <section><h3>{strings.memoryClaimsTitle}</h3><p>{strings.memoryClaims}</p></section>
         </div>
       </dialog>

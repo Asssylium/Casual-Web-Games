@@ -110,6 +110,7 @@ function PlayerSeats({ room, userId, onSelect, selectedId, selectableIds = [], t
 function policyDetail(team, index, playerCount, enacted, t) {
   if (team === "liberal") {
     return {
+      teamKey: "liberal",
       team: t("liberal"),
       index,
       enacted,
@@ -120,6 +121,7 @@ function policyDetail(team, index, playerCount, enacted, t) {
 
   if (index === 6) {
     return {
+      teamKey: "fascist",
       team: t("fascist"),
       index,
       enacted,
@@ -132,7 +134,7 @@ function policyDetail(team, index, playerCount, enacted, t) {
     : playerCount <= 8
       ? [t("policyNoPower"), t("investigation"), t("specialElection"), t("execution"), t("execution")]
       : [t("investigation"), t("investigation"), t("specialElection"), t("execution"), t("execution")];
-  return { team: t("fascist"), index, enacted, title: t("fascistPolicy"), description: effects[index - 1] };
+  return { teamKey: "fascist", team: t("fascist"), index, enacted, title: t("fascistPolicy"), description: effects[index - 1] };
 }
 
 function PolicyTrack({ room, onPolicyClick, t }) {
@@ -223,6 +225,10 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
   const [chatBusy, setChatBusy] = useState(false);
   const strings = LOCALES[language] || en;
   const t = (key, values) => translate(strings, key, values);
+  const localizedNotice = (notice) => {
+    if (notice === "Privately review your role. The first President will be chosen at random.") return t("roleRevealNotice");
+    return notice;
+  };
 
   useEffect(() => {
     const dialog = policyDialogRef.current;
@@ -543,16 +549,16 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
 
               {room.phase === "role-reveal" && (
                 <>
-                  <PanelTitle eyebrow="Private information" icon={EyeOff} title="Your role is secret">
-                    Remember your team, then keep the screen to yourself. The election begins in {secondsLeft} seconds.
+                  <PanelTitle eyebrow={t("privateInfo")} icon={EyeOff} title={t("roleSecret")}>
+                    {t("electionBegins", { seconds: secondsLeft })}
                   </PanelTitle>
                   <div className={`sh-role-card sh-role-${secret?.party || "unknown"}`}>
-                    <span>Your secret role</span>
-                    <strong>{secret?.role || "Dealing..."}</strong>
-                    <small>{secret?.party === "liberal" ? "Liberal team" : secret?.party === "fascist" ? "Fascist team" : ""}</small>
+                    <span>{t("yourSecretRole")}</span>
+                    <strong>{secret?.role ? t(secret.role) : "..."}</strong>
+                    <small>{secret?.party === "liberal" ? t("liberalTeam") : secret?.party === "fascist" ? t("fascistTeam") : ""}</small>
                   </div>
                   {secret?.knownPlayers?.length > 0 && <div className="sh-intel">
-                    <strong>Your fellow Fascists</strong>
+                    <strong>{t("fellowFascists")}</strong>
                     <span>{secret.knownPlayers.map((player) => `${player.username}${player.role === "hitler" ? " · Hitler" : ""}`).join(" · ")}</span>
                   </div>}
                 </>
@@ -653,7 +659,7 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
               )}
 
               <VoteResults results={room.ballotResults} players={room.players} />
-              <p aria-live="polite" className="sh-notice">{room.notice}</p>
+              <p aria-live="polite" className="sh-notice">{localizedNotice(room.notice)}</p>
             </section>
 
             <aside className="sh-side-panel">
@@ -702,9 +708,9 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
             </div>
             <button aria-label="Close policy details" className="turn-dialog-close" onClick={() => policyDialogRef.current?.close()} type="button"><X size={18} /></button>
           </div>
-          <span className={`sh-policy-status${selectedPolicy.enacted ? " is-enacted" : ""}`}>{selectedPolicy.enacted ? "Enacted" : "Not enacted yet"}</span>
+          <span className={`sh-policy-status${selectedPolicy.enacted ? " is-enacted" : ""}`}>{selectedPolicy.enacted ? t("policyEnacted") : t("policyNotEnacted")}</span>
           <p>{selectedPolicy.description}</p>
-          {selectedPolicy.team === "Fascist" && selectedPolicy.index < 6 && <small>The executive power depends on the player count at the start of this game.</small>}
+          {selectedPolicy.teamKey === "fascist" && selectedPolicy.index < 6 && <small>{t("policyCountNote")}</small>}
         </div>}
       </dialog>
     </section>
