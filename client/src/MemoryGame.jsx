@@ -266,10 +266,11 @@ export default function MemoryGame({ onBack, user }) {
   }
 
   useEffect(() => {
+    const soundPath = (name) => `${import.meta.env.BASE_URL}sounds/${encodeURIComponent(name)}`;
     audioRefs.current = {
-      damage: new Audio("/sounds/Loose%20sound%20take%204%20second.mp3"),
-      win: new Audio("/sounds/Memory%20Winning%20sound%20take%206%20second.mp3"),
-      opening: new Audio("/sounds/Opening%20sound%20for%20memory.mp3"),
+      damage: new Audio(soundPath("Loose sound take 4 second.mp3")),
+      win: new Audio(soundPath("Memory Winning sound take 6 second.mp3")),
+      opening: new Audio(soundPath("Opening sound for memory.mp3")),
     };
     Object.values(audioRefs.current).forEach((audio) => {
       audio.preload = "auto";
@@ -426,7 +427,6 @@ export default function MemoryGame({ onBack, user }) {
       setError("Connecting to the game server...");
       return;
     }
-    prepareSound();
     setError("");
     setBusy(true);
     void postGameAction(eventName, payload)
