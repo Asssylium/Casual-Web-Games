@@ -447,7 +447,8 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
 .sh-track-liberal .sh-track-heading strong { color: var(--sh-green); }
 .sh-track-fascist .sh-track-heading strong { color: var(--sh-red); }
 .sh-policy-slots { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 5px; }
-.sh-policy-slots span { height: 9px; border: 1px solid #f0ecdf35; background: #111514; }
+.sh-policy-slot { height: 12px; padding: 0; border: 1px solid #f0ecdf35; background: #111514; cursor: pointer; }
+.sh-policy-slot:hover, .sh-policy-slot:focus-visible { border-color: var(--sh-gold); outline: 0; box-shadow: 0 0 0 2px #d7ba7633; }
 .sh-track-liberal .sh-policy-slots .is-filled { border-color: var(--sh-green); background: var(--sh-green); }
 .sh-track-fascist .sh-policy-slots .is-filled { border-color: var(--sh-red); background: var(--sh-red); }
 .sh-table-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(255px, .7fr); gap: 14px; align-items: start; }
@@ -494,6 +495,15 @@ button.sh-player:hover { border-color: #d7ba7680; }
 .sh-policy-liberal strong { color: var(--sh-green); }
 .sh-policy-fascist { border-top: 3px solid var(--sh-red); }
 .sh-policy-fascist strong { color: var(--sh-red); }
+.sh-policy-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--sh-line); background: var(--sh-panel); color: var(--sh-paper); box-shadow: 0 24px 70px #000a; }
+.sh-policy-dialog::backdrop { background: #050806b8; backdrop-filter: blur(4px); }
+.sh-policy-dialog-content { display: grid; gap: 15px; padding: 22px; }
+.sh-policy-dialog-liberal { border-top: 3px solid var(--sh-green); }
+.sh-policy-dialog-fascist { border-top: 3px solid var(--sh-red); }
+.sh-policy-dialog-content p { margin: 0; color: var(--sh-paper); line-height: 1.55; }
+.sh-policy-dialog-content small { color: var(--sh-muted); line-height: 1.45; }
+.sh-policy-status { width: max-content; padding: 4px 8px; border: 1px solid #f0ecdf35; color: var(--sh-muted); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.sh-policy-status.is-enacted { border-color: var(--sh-gold); color: var(--sh-gold); background: #d7ba7614; }
 .sh-notice { margin: 0; padding: 9px 11px; border-left: 2px solid var(--sh-gold); background: #d7ba760d; color: #c6c2b4; font-size: .76rem; line-height: 1.45; }
 .sh-side-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sh-side-heading strong { color: var(--sh-muted); font-size: .72rem; }
@@ -503,6 +513,18 @@ button.sh-player:hover { border-color: #d7ba7680; }
 .sh-tracker i.is-filled { border-color: var(--sh-gold); background: var(--sh-gold); }
 .sh-deck-counts { display: flex; justify-content: space-between; gap: 10px; color: var(--sh-muted); font-size: .7rem; }
 .sh-deck-counts strong { display: block; margin-top: 4px; color: var(--sh-paper); font-size: 1rem; }
+.sh-chat { display: grid; gap: 8px; padding-top: 11px; border-top: 1px solid var(--sh-line); }
+.sh-chat-messages { display: grid; align-content: start; gap: 7px; max-height: 210px; overflow-y: auto; padding-right: 4px; }
+.sh-chat-empty { margin: 0; color: var(--sh-muted); font-size: .71rem; line-height: 1.45; }
+.sh-chat-message { display: grid; gap: 2px; padding: 7px 8px; border-left: 2px solid #f0ecdf26; background: #ffffff05; }
+.sh-chat-message.is-own { border-left-color: var(--sh-gold); background: #d7ba760c; }
+.sh-chat-message strong { color: var(--sh-gold); font-size: .68rem; }
+.sh-chat-message span { color: var(--sh-paper); font-size: .75rem; line-height: 1.4; overflow-wrap: anywhere; }
+.sh-chat-form { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 6px; }
+.sh-chat-form input { min-width: 0; min-height: 34px; padding: 7px 9px; border: 1px solid var(--sh-line); border-radius: 0; outline: 0; background: #111614; color: var(--sh-paper); font: inherit; font-size: .74rem; }
+.sh-chat-form input:focus { border-color: var(--sh-gold); }
+.sh-chat-form button { display: grid; place-items: center; border: 1px solid #d7ba7666; background: #d7ba7617; color: var(--sh-gold); cursor: pointer; }
+.sh-chat-form button:disabled { cursor: not-allowed; opacity: .45; }
 .sh-private-intel { display: grid; gap: 5px; padding-top: 11px; border-top: 1px solid var(--sh-line); }
 .sh-private-intel p { margin: 0; color: var(--sh-green); font-size: .74rem; line-height: 1.45; }
 .sh-win-note { display: flex; align-items: flex-start; gap: 8px; padding-top: 11px; border-top: 1px solid var(--sh-line); color: var(--sh-muted); font-size: .68rem; line-height: 1.45; }

@@ -8,6 +8,8 @@ import {
   EyeOff,
   Flag,
   Info,
+  MessageCircle,
+  Send,
   Shield,
   Skull,
   Users,
@@ -98,14 +100,51 @@ function PlayerSeats({ room, userId, onSelect, selectedId, selectableIds = [] })
   );
 }
 
-function PolicyTrack({ room }) {
+function policyDetail(team, index, playerCount, enacted) {
+  if (team === "liberal") {
+    return {
+      team: "Liberal",
+      index,
+      enacted,
+      title: index === 5 ? "Liberal victory" : "Liberal policy",
+      description: index === 5
+        ? "Enacting the fifth Liberal policy immediately wins the game for the Liberals."
+        : "This policy does not grant an executive power. The Liberals win when five Liberal policies have been enacted.",
+    };
+  }
+
+  if (index === 6) {
+    return {
+      team: "Fascist",
+      index,
+      enacted,
+      title: "Fascist victory",
+      description: "Enacting the sixth Fascist policy immediately wins the game for the Fascists.",
+    };
+  }
+
+  const effects = playerCount <= 6
+    ? ["No executive power.", "No executive power.", "Policy peek: the President secretly views the top three policies.", "Execution: the President chooses a player to execute.", "Execution: the President chooses a player to execute."]
+    : playerCount <= 8
+      ? ["No executive power.", "Investigation: the President privately learns one player's party membership.", "Special election: the President selects the next President.", "Execution: the President chooses a player to execute.", "Execution: the President chooses a player to execute."]
+      : ["Investigation: the President privately learns one player's party membership.", "Investigation: the President privately learns one player's party membership.", "Special election: the President selects the next President.", "Execution: the President chooses a player to execute.", "Execution: the President chooses a player to execute."];
+  return { team: "Fascist", index, enacted, title: "Fascist policy", description: effects[index - 1] };
+}
+
+function PolicyTrack({ room, onPolicyClick }) {
   return (
     <div className="sh-tracks">
       <div className="sh-track sh-track-liberal">
         <div className="sh-track-heading"><span>Liberal</span><strong>{room.liberalPolicies}/5</strong></div>
         <div className="sh-policy-slots">
           {Array.from({ length: 5 }, (_, index) => (
-            <span className={index < room.liberalPolicies ? "is-filled" : ""} key={index} />
+            <button
+              aria-label={`Liberal policy ${index + 1}: ${index < room.liberalPolicies ? "enacted" : "not enacted"}. Show details`}
+              className={`sh-policy-slot${index < room.liberalPolicies ? " is-filled" : ""}`}
+              key={index}
+              onClick={() => onPolicyClick(policyDetail("liberal", index + 1, room.initialPlayerCount, index < room.liberalPolicies))}
+              type="button"
+            />
           ))}
         </div>
       </div>
@@ -113,7 +152,13 @@ function PolicyTrack({ room }) {
         <div className="sh-track-heading"><span>Fascist</span><strong>{room.fascistPolicies}/6</strong></div>
         <div className="sh-policy-slots">
           {Array.from({ length: 6 }, (_, index) => (
-            <span className={index < room.fascistPolicies ? "is-filled" : ""} key={index} />
+            <button
+              aria-label={`Fascist policy ${index + 1}: ${index < room.fascistPolicies ? "enacted" : "not enacted"}. Show details`}
+              className={`sh-policy-slot${index < room.fascistPolicies ? " is-filled" : ""}`}
+              key={index}
+              onClick={() => onPolicyClick(policyDetail("fascist", index + 1, room.initialPlayerCount, index < room.fascistPolicies))}
+              type="button"
+            />
           ))}
         </div>
       </div>
@@ -133,9 +178,31 @@ function VoteResults({ results, players }) {
   );
 }
 
+function RoomChat({ messages = [], onSend, sending, value, onChange, scrollRef, userId }) {
+  return (
+    <section aria-label="Room chat" className="sh-chat">
+      <div className="sh-side-heading"><span className="sh-eyebrow">Table chat</span><MessageCircle aria-hidden="true" size={16} /></div>
+      <div aria-live="polite" className="sh-chat-messages" ref={scrollRef}>
+        {messages.length === 0 ? <p className="sh-chat-empty">Messages from everyone at this table appear here.</p> : messages.map((message) => (
+          <div className={`sh-chat-message${message.senderId === userId ? " is-own" : ""}`} key={message.id}>
+            <strong>{message.senderName}{message.senderId === userId ? " (you)" : ""}</strong>
+            <span>{message.text}</span>
+          </div>
+        ))}
+      </div>
+      <form className="sh-chat-form" onSubmit={(event) => { event.preventDefault(); onSend(); }}>
+        <input aria-label="Chat message" disabled={sending} maxLength={300} onChange={(event) => onChange(event.target.value)} placeholder="Discuss the table…" value={value} />
+        <button aria-label="Send message" disabled={sending || !value.trim()} type="submit"><Send size={15} /></button>
+      </form>
+    </section>
+  );
+}
+
 export default function SecretHitlerGame({ onBack, user }) {
   const clientRef = useRef(null);
   const rulesDialogRef = useRef(null);
+  const policyDialogRef = useRef(null);
+  const chatScrollRef = useRef(null);
   const [room, setRoom] = useState(null);
   const [secret, setSecret] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -147,6 +214,19 @@ export default function SecretHitlerGame({ onBack, user }) {
   const [targetId, setTargetId] = useState("");
   const [copied, setCopied] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [selectedPolicy, setSelectedPolicy] = useState(null);
+  const [chatText, setChatText] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+
+  useEffect(() => {
+    const dialog = policyDialogRef.current;
+    if (selectedPolicy && dialog && !dialog.open) dialog.showModal();
+  }, [selectedPolicy]);
+
+  useEffect(() => {
+    const chat = chatScrollRef.current;
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  }, [room?.chatMessages?.length]);
 
   function applyState(result) {
     setRoom(result.room || null);
@@ -314,6 +394,20 @@ export default function SecretHitlerGame({ onBack, user }) {
     }
   }
 
+  async function sendChat() {
+    const text = chatText.trim();
+    if (!text || chatBusy) return;
+    setChatBusy(true);
+    try {
+      applyState(await postAction("game:chat", { text }));
+      setChatText("");
+    } catch (chatError) {
+      setError(chatError.message || "Could not send the message");
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
   function openRules() {
     if (!rulesDialogRef.current?.open) rulesDialogRef.current?.showModal();
   }
@@ -408,7 +502,7 @@ export default function SecretHitlerGame({ onBack, user }) {
             )}
           </div>
 
-          <PolicyTrack room={room} />
+          <PolicyTrack room={room} onPolicyClick={setSelectedPolicy} />
           <div className="sh-table-layout">
             <section className="sh-main-panel">
               {room.phase === "lobby" && (
@@ -419,6 +513,9 @@ export default function SecretHitlerGame({ onBack, user }) {
                   <PlayerSeats room={room} userId={user.id} />
                   {isHost && <ActionButton disabled={busy || room.players.length >= MAX_PLAYERS} onClick={() => act("game:add-bot")} tone="outline">
                     <Users size={16} /> Add bot
+                  </ActionButton>}
+                  {isHost && playerCount < MIN_PLAYERS && <ActionButton disabled={busy} onClick={() => act("game:fill-bots")} tone="outline">
+                    <Users size={16} /> Fill with bots ({MIN_PLAYERS - playerCount})
                   </ActionButton>}
                   {isHost && <ActionButton disabled={busy || !connected || playerCount < MIN_PLAYERS || playerCount > MAX_PLAYERS || room.players.some((player) => !player.connected)} onClick={() => act("game:start")}>
                     Deal roles <ArrowLeft aria-hidden="true" className="sh-join-arrow" size={16} />
@@ -546,6 +643,15 @@ export default function SecretHitlerGame({ onBack, user }) {
               <PlayerSeats room={room} userId={user.id} />
               <div className="sh-tracker"><span>Failed governments</span><div>{[0, 1, 2].map((step) => <i className={step < room.electionTracker ? "is-filled" : ""} key={step} />)}</div></div>
               <div className="sh-deck-counts"><span>Draw pile <strong>{room.drawPileCount}</strong></span><span>Discard pile <strong>{room.discardPileCount}</strong></span></div>
+              <RoomChat
+                messages={room.chatMessages}
+                onChange={setChatText}
+                onSend={sendChat}
+                scrollRef={chatScrollRef}
+                sending={chatBusy}
+                userId={user.id}
+                value={chatText}
+              />
               {secret?.privateIntel?.length > 0 && <div className="sh-private-intel">
                 <span className="sh-eyebrow">Your private information</span>
                 {secret.privateIntel.map((intel, index) => <p key={`${intel.type}-${index}`}>
@@ -576,6 +682,25 @@ export default function SecretHitlerGame({ onBack, user }) {
           <section><h3>Failed governments</h3><p>After 3 rejected governments, the top policy is enacted automatically. It grants no executive power and clears term limits.</p></section>
           <section><h3>Executive powers and veto</h3><p>Fascist policies may grant investigation, special election, policy peek, or execution. After 5 Fascist policies, the Chancellor may request a veto; both Chancellor and President must agree.</p></section>
         </div>
+      </dialog>
+      <dialog
+        aria-labelledby="policy-detail-title"
+        className={`sh-policy-dialog${selectedPolicy?.team === "Liberal" ? " sh-policy-dialog-liberal" : " sh-policy-dialog-fascist"}`}
+        onClose={() => setSelectedPolicy(null)}
+        ref={policyDialogRef}
+      >
+        {selectedPolicy && <div className="sh-policy-dialog-content">
+          <div className="game-rules-heading">
+            <div>
+              <span className="eyebrow">{selectedPolicy.team} track · Policy {selectedPolicy.index}</span>
+              <h2 id="policy-detail-title">{selectedPolicy.title}</h2>
+            </div>
+            <button aria-label="Close policy details" className="turn-dialog-close" onClick={() => policyDialogRef.current?.close()} type="button"><X size={18} /></button>
+          </div>
+          <span className={`sh-policy-status${selectedPolicy.enacted ? " is-enacted" : ""}`}>{selectedPolicy.enacted ? "Enacted" : "Not enacted yet"}</span>
+          <p>{selectedPolicy.description}</p>
+          {selectedPolicy.team === "Fascist" && selectedPolicy.index < 6 && <small>The executive power depends on the player count at the start of this game.</small>}
+        </div>}
       </dialog>
     </section>
   );

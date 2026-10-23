@@ -20,6 +20,7 @@ const router = express.Router();
 const PLAYER_TIMEOUT_MS = 45_000;
 const ROOM_CODE_LENGTH = 5;
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const scheduledBotRooms = new Set();
 
 function roomChannel(code) {
   return `secret-hitler:${code}:state`;
@@ -37,6 +38,13 @@ function roomState(room) {
   return {
     ...publicState(room),
     realtimeAvailable: Boolean(process.env.ABLY_API_KEY),
+    chatMessages: (room.chatMessages || []).map((message) => ({
+      id: message.id,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      text: message.text,
+      createdAt: message.createdAt,
+    })),
   };
 }
 
@@ -90,6 +98,44 @@ function runBots(room) {
   }
 }
 
+function botNeedsTurn(room) {
+  if (room.phase === "role-reveal") return room.players.some((player) => isBot(player));
+  if (room.phase === "election") return isBot(findPlayer(room, room.presidentId));
+  if (room.phase === "voting") return room.players.some((player) => player.alive !== false && isBot(player) && !Object.hasOwn(room.ballots, player.userId));
+  if (room.phase === "legislative-president") return isBot(findPlayer(room, room.presidentId));
+  if (room.phase === "legislative-chancellor") return isBot(findPlayer(room, room.chancellorId));
+  if (room.phase === "veto-response" || room.phase === "executive") return isBot(findPlayer(room, room.presidentId));
+  return false;
+}
+
+function scheduleBotTurn(room) {
+  if (!botNeedsTurn(room)) return;
+  const roomId = room._id.toString();
+  if (scheduledBotRooms.has(roomId)) return;
+  scheduledBotRooms.add(roomId);
+  const thinkingDelay = 3_000 + crypto.randomInt(2_001);
+  const delay = room.phase === "role-reveal" && room.phaseEndsAt
+    ? Math.max(thinkingDelay, room.phaseEndsAt - Date.now() + thinkingDelay)
+    : thinkingDelay;
+  setTimeout(async () => {
+    scheduledBotRooms.delete(roomId);
+    try {
+      const freshRoom = await SecretHitlerRoom.findById(roomId);
+      if (!freshRoom) return;
+      const before = `${freshRoom.phase}:${freshRoom.round}:${freshRoom.liberalPolicies}:${freshRoom.fascistPolicies}:${Object.keys(freshRoom.ballots || {}).length}:${freshRoom.power || ""}`;
+      runBots(freshRoom);
+      const after = `${freshRoom.phase}:${freshRoom.round}:${freshRoom.liberalPolicies}:${freshRoom.fascistPolicies}:${Object.keys(freshRoom.ballots || {}).length}:${freshRoom.power || ""}`;
+      if (before !== after) {
+        await freshRoom.save();
+        await broadcastRoom(freshRoom);
+      }
+      scheduleBotTurn(freshRoom);
+    } catch (error) {
+      console.error("Secret Hitler bot turn failed:", error);
+    }
+  }, delay);
+}
+
 async function broadcastRoom(room) {
   if (!process.env.ABLY_API_KEY) return false;
   await publishRoom(roomChannel(room.code), "game:state", roomState(room));
@@ -114,6 +160,7 @@ async function saveAndReply(room, userId, res) {
     throw error;
   }
   await broadcastRoom(room);
+  scheduleBotTurn(room);
   return res.json({ ok: true, ...resultFor(room, userId) });
 }
 
@@ -123,6 +170,7 @@ async function saveVoteAndReply(room, userId, payload, res) {
     try {
       await currentRoom.save();
       await broadcastRoom(currentRoom);
+      scheduleBotTurn(currentRoom);
       return res.json({ ok: true, ...resultFor(currentRoom, userId) });
     } catch (error) {
       if (error.name !== "VersionError" || attempt === 7) {
@@ -244,6 +292,28 @@ router.post("/", async (req, res, next) => {
       const bot = createBot(room.players);
       room.players.push({ ...bot, alive: true });
       room.notice = `${bot.username} joined the room.`;
+      return saveAndReply(room, userId, res);
+    }
+
+    if (eventName === "game:fill-bots") {
+      if (room.hostId !== userId) return sendFailure(res, 403, "Only the host can add bots");
+      if (room.phase !== "lobby") return sendFailure(res, 409, "Bots can only be added in the lobby");
+      while (room.players.length < MIN_PLAYERS) room.players.push({ ...createBot(room.players), alive: true });
+      room.notice = "The table was filled with bots for a practice game.";
+      return saveAndReply(room, userId, res);
+    }
+
+    if (eventName === "game:chat") {
+      const text = typeof payload.text === "string" ? payload.text.trim().replace(/\s+/g, " ") : "";
+      if (!text || text.length > 300) return sendFailure(res, 400, "Messages must be between 1 and 300 characters");
+      room.chatMessages.push({
+        id: crypto.randomUUID(),
+        senderId: userId,
+        senderName: player.username,
+        text,
+        createdAt: Date.now(),
+      });
+      if (room.chatMessages.length > 100) room.chatMessages = room.chatMessages.slice(-100);
       return saveAndReply(room, userId, res);
     }
 

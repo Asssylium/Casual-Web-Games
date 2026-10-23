@@ -14,6 +14,17 @@ const playerSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const chatMessageSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    senderId: { type: String, required: true },
+    senderName: { type: String, required: true },
+    text: { type: String, required: true, maxlength: 300 },
+    createdAt: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const roomSchema = new mongoose.Schema(
   {
     code: { type: String, required: true, unique: true },
@@ -58,6 +69,7 @@ const roomSchema = new mongoose.Schema(
     winnerTeam: { type: String, enum: ["liberal", "fascist"], default: null },
     winnerReason: { type: String, default: null },
     lastEnactedPolicy: { type: String, enum: ["liberal", "fascist"], default: null },
+    chatMessages: { type: [chatMessageSchema], default: [] },
     notice: { type: String, default: "" },
   },
   { timestamps: true, optimisticConcurrency: true }
