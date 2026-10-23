@@ -513,16 +513,20 @@ export default function MemoryGame({ onBack, user }) {
   }
 
   const claimResult = room?.lastReveal;
-  const claimResultTitle = claimResult?.outcome === "accepted-lie"
-    ? "Bluff accepted"
-    : claimResult?.outcome === "truth"
-      ? "Correct claim rejected"
-      : "Bluff caught";
-  const claimResultCopy = claimResult?.outcome === "accepted-lie"
-    ? `${claimResult.toName} accepted “${claimResult.claimedName}”, but the gift was ${claimResult.card?.name}.`
-    : claimResult?.outcome === "truth"
-      ? `${claimResult.toName} called bluff, but ${claimResult.fromName}'s claim was correct.`
-      : `${claimResult.toName} called bluff and caught ${claimResult.fromName}'s false claim.`;
+  const claimResultTitle = !claimResult
+    ? ""
+    : claimResult.outcome === "accepted-lie"
+      ? "Bluff accepted"
+      : claimResult.outcome === "truth"
+        ? "Correct claim rejected"
+        : "Bluff caught";
+  const claimResultCopy = !claimResult
+    ? ""
+    : claimResult.outcome === "accepted-lie"
+      ? `${claimResult.toName} accepted “${claimResult.claimedName}”, but the gift was ${claimResult.card?.name}.`
+      : claimResult.outcome === "truth"
+        ? `${claimResult.toName} called bluff, but ${claimResult.fromName}'s claim was correct.`
+        : `${claimResult.toName} called bluff and caught ${claimResult.fromName}'s false claim.`;
 
   return (
     <section className="memory-game" aria-label="Memory Pass game">
