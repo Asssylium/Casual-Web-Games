@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Ably from "ably";
+import en from "./locales/en.json";
+import vie from "./locales/vie.json";
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -205,7 +207,7 @@ function ObjectCard({ card, label = "", locked = false }) {
   );
 }
 
-export default function MemoryGame({ onBack, user }) {
+export default function MemoryGame({ language = "en", onBack, user }) {
   const ablyRef = useRef(null);
   const turnDialogRef = useRef(null);
   const giftRevealDialogRef = useRef(null);
@@ -228,6 +230,7 @@ export default function MemoryGame({ onBack, user }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [soundOn, setSoundOn] = useState(() => window.localStorage.getItem("memory-sound-muted") !== "true");
+  const strings = language === "vie" ? vie : en;
 
   function playMemorySound(kind) {
     if (!soundOn) return;
@@ -1008,13 +1011,13 @@ export default function MemoryGame({ onBack, user }) {
       <dialog aria-labelledby="memory-rules-title" className="game-rules-dialog" ref={rulesDialogRef}>
         <div className="game-rules-content">
           <div className="game-rules-heading">
-            <div><span className="eyebrow">Memory Pass guide</span><h2 id="memory-rules-title">How to play</h2></div>
+            <div><span className="eyebrow">{strings.memoryGuide}</span><h2 id="memory-rules-title">{strings.rulesTitle}</h2></div>
             <button aria-label="Close rules" className="turn-dialog-close" onClick={() => rulesDialogRef.current?.close()} type="button"><X size={18} /></button>
           </div>
-          <section><h3>Goal</h3><p>Everyone begins with 3 points. Wrong decisions cost a point. At 0 points you become a spectator; the last player still standing wins.</p></section>
+          <section><h3>{strings.memoryGoalTitle}</h3><p>{strings.memoryGoal}</p></section>
           <section><h3>Remember the table</h3><p>At the start, memorize every gift and its arrow. After the reveal, opponents’ gifts are face down, but their arrows remain visible.</p></section>
           <section><h3>Your turn</h3><p>If you hold one gift, draw a new one. Pass the drawn gift, or when holding two gifts pass the oldest one, in its arrow’s direction. A double arrow lets you choose left or right.</p></section>
-          <section><h3>Claims and bluffs</h3><p>Name the gift you are passing. The receiver can accept or call bluff. Accepting a lie costs the receiver a point. Calling bluff costs the giver a point if it was a lie, or the receiver a point if it was true.</p></section>
+          <section><h3>{strings.memoryClaimsTitle}</h3><p>{strings.memoryClaims}</p></section>
         </div>
       </dialog>
     </section>

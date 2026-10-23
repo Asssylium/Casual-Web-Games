@@ -685,18 +685,10 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
       <dialog aria-labelledby="secret-hitler-rules-title" className="game-rules-dialog sh-rules-dialog" ref={rulesDialogRef}>
         <div className="game-rules-content">
           <div className="game-rules-heading">
-            <div><span className="eyebrow">Secret Hitler guide</span><h2 id="secret-hitler-rules-title">How to play</h2></div>
+            <div><span className="eyebrow">Secret Hitler guide</span><h2 id="secret-hitler-rules-title">{t("rulesTitle")}</h2></div>
             <button aria-label="Close rules" className="turn-dialog-close" onClick={() => rulesDialogRef.current?.close()} type="button"><X size={18} /></button>
           </div>
-          <section><h3>Goal and teams</h3><p>There are Liberals, Fascists, and one hidden Hitler. Liberals win by enacting 5 Liberal policies or executing Hitler. Fascists win by enacting 6 Fascist policies, or by electing Hitler Chancellor after 3 Fascist policies are already enacted.</p></section>
-          <section><h3>Secret roles</h3><p>Keep your role private. Fascists know their team; in 5–6 player games Hitler also knows the Fascists. In 7–10 player games, Hitler does not know who the Fascists are. Discussion, bluffing, and deception are part of the game.</p></section>
-          <section><h3>President and nomination</h3><p>The Presidency moves clockwise among living players. The President nominates an eligible Chancellor. The most recently elected Chancellor cannot be nominated; with more than 5 players, the most recently elected President is also term-limited.</p></section>
-          <section><h3>Vote: Ja or Nein</h3><p>Every living player votes Ja (approve) or Nein (reject) after a nomination. A government needs more Ja than Nein votes to pass. Votes remain hidden until everyone has voted. If it passes, the President and Chancellor legislate; if it fails, the failed-government tracker advances and the next President nominates.</p></section>
-          <section><h3>Three failed governments</h3><p>When three governments in a row are rejected, the top policy of the deck is enacted automatically. This chaos policy grants no executive power, resets the failed-government tracker, and clears term limits for the next election.</p></section>
-          <section><h3>Making laws</h3><p>The President privately draws 3 policies, discards 1, and passes 2 to the Chancellor. The Chancellor privately discards 1 and enacts the remaining policy. Policy cards, discards, and claims about them are private—players can tell the truth or lie.</p></section>
-          <section><h3>Policy tracks</h3><p>Liberal policies have no executive power; the fifth Liberal policy wins. Fascist policies can unlock investigation, special election, policy peek, or execution depending on the starting player count. Click any space on either policy track to see its exact effect and whether it has been enacted.</p></section>
-          <section><h3>Executive actions</h3><p>Only the current President performs a granted power. Investigation reveals a player’s party, not their exact role. A special election chooses the next President once, then normal rotation resumes. Execution removes that player from the game; executing Hitler immediately gives the Liberals victory.</p></section>
-          <section><h3>Veto</h3><p>After 5 Fascist policies, the Chancellor may request a veto instead of enacting a policy. The President must approve it. If both agree, both policy cards are discarded and the failed-government tracker advances; if the President denies it, the Chancellor must enact one policy.</p></section>
+          {["Goal", "Roles", "Nomination", "Vote", "Failed", "Laws", "Tracks", "Executive", "Veto"].map((section) => <section key={section}><h3>{t(`rules${section}Title`)}</h3><p>{t(`rules${section}`)}</p></section>)}
         </div>
       </dialog>
       <dialog
