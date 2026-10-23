@@ -741,10 +741,10 @@ export default function MemoryGame({ language = "en", onBack, user }) {
                 {isHost && (
                   <>
                     <GameButton disabled={busy || room.players.length >= 8} onClick={() => emitAction("game:add-bot")}>
-                      <Users size={16} /> Add bot
+                      <Users size={16} /> {strings.addBot}
                     </GameButton>
                     <label className="field starting-player-field">
-                      <span>First player</span>
+                      <span>{strings.firstPlayer}</span>
                       <select
                         onChange={(event) => setStartingPlayerId(event.target.value)}
                         value={startingPlayerId}
@@ -758,7 +758,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
                       disabled={busy || room.players.filter((player) => player.connected).length < 2}
                       onClick={startGame}
                     >
-                      Deal the cards <ArrowRight size={16} />
+                      {strings.dealCards} <ArrowRight size={16} />
                     </GameButton>
                   </>
                 )}
@@ -891,14 +891,14 @@ export default function MemoryGame({ language = "en", onBack, user }) {
               <p className="turn-dialog-copy">Accept the claim, or call bluff to reveal the gift. Accepting a false claim gives you a penalty point.</p>
               <div className="receiver-actions">
                 <GameButton disabled={busy} onClick={() => emitAction("game:accept")}>
-                  <Check size={16} /> Accept gift
+                  <Check size={16} /> {strings.acceptGift}
                 </GameButton>
                 <GameButton
                   className="danger-action"
                   disabled={busy}
                   onClick={() => emitAction("game:challenge")}
                 >
-                  <Flag size={16} /> Call bluff
+                  <Flag size={16} /> {strings.callBluff}
                 </GameButton>
               </div>
             </>
@@ -907,7 +907,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
               <ObjectCard card={hand[0]} label="Your current gift" />
               <p className="turn-dialog-copy">Draw the next gift, memorize it and its arrow, then pass it.</p>
               <GameButton disabled={busy} onClick={() => emitAction("game:draw")}>
-                <Sparkles size={16} /> Draw from gift shop
+                <Sparkles size={16} /> {strings.drawGift}
               </GameButton>
             </>
           ) : giftToPassNow ? (
@@ -935,7 +935,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
                     onClick={() => choosePassDirection("left")}
                     type="button"
                   >
-                    <ArrowLeft size={16} /> Left
+                    <ArrowLeft size={16} /> {strings.left}
                   </button>
                   <button
                     aria-pressed={passDirection === "right"}
@@ -943,7 +943,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
                     onClick={() => choosePassDirection("right")}
                     type="button"
                   >
-                    Right <ArrowRight size={16} />
+                    {strings.right} <ArrowRight size={16} />
                   </button>
                 </div>
               )}
@@ -962,7 +962,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
                 disabled={busy || !recipient || !claimedName.trim() || (giftToPassNow.direction === "both" && !passDirection)}
                 onClick={passGift}
               >
-                Send gift {passDirection || giftToPassNow.direction}
+                {strings.sendGift} {passDirection || giftToPassNow.direction}
                 <ArrowRight size={16} />
               </GameButton>
             </>
@@ -1004,7 +1004,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
             <strong className="claim-result-penalty">
               {claimResult.penaltyPlayerName} loses a point ({Math.max(0, 3 - claimResult.penaltyCount)}/3 remaining)
             </strong>
-            <GameButton onClick={closeClaimResult}>Continue</GameButton>
+            <GameButton onClick={closeClaimResult}>{strings.continue}</GameButton>
           </div>
         )}
       </dialog>

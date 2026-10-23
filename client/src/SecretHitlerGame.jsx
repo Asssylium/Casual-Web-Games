@@ -72,7 +72,7 @@ function PanelTitle({ icon: Icon, eyebrow, title, children }) {
   );
 }
 
-function PlayerSeats({ room, userId, onSelect, selectedId, selectableIds = [] }) {
+function PlayerSeats({ room, userId, onSelect, selectedId, selectableIds = [], t = (key) => key }) {
   return (
     <div className="sh-player-list" aria-label="Players">
       {room.players.map((player, index) => {
@@ -81,12 +81,12 @@ function PlayerSeats({ room, userId, onSelect, selectedId, selectableIds = [] })
           <>
             <span className="sh-seat-index">{String(index + 1).padStart(2, "0")}</span>
             <span className="sh-seat-name">
-              {player.username}{player.id === userId ? " (you)" : ""}
-              {player.id === room.presidentId && <small>President</small>}
-              {player.id === room.chancellorId && <small>Chancellor</small>}
+              {player.username}{player.id === userId ? ` (${t("you")})` : ""}
+              {player.id === room.presidentId && <small>{t("president")}</small>}
+              {player.id === room.chancellorId && <small>{t("chancellor")}</small>}
             </span>
             <span className={`sh-seat-status${player.alive ? "" : " is-out"}`}>
-              {!player.alive ? "Out" : player.connected ? "In game" : "Offline"}
+              {!player.alive ? t("out") : player.connected ? t("inGame") : t("offline")}
             </span>
             {player.id === selectedId && <Check aria-label="Selected" size={17} />}
           </>
@@ -107,35 +107,32 @@ function PlayerSeats({ room, userId, onSelect, selectedId, selectableIds = [] })
   );
 }
 
-function policyDetail(team, index, playerCount, enacted) {
+function policyDetail(team, index, playerCount, enacted, t) {
   if (team === "liberal") {
     return {
-      team: "Liberal",
+      team: t("liberal"),
       index,
       enacted,
-      title: index === 5 ? "Liberal victory" : "Liberal policy",
-      description: index === 5
-        ? "Enacting the fifth Liberal policy immediately wins the game for the Liberals."
-        : "This policy does not grant an executive power. The Liberals win when five Liberal policies have been enacted.",
+      title: index === 5 ? t("liberalVictory") : t("liberalPolicy"),
+      description: index === 5 ? t("liberalVictoryDescription") : t("liberalPolicyDescription"),
     };
   }
 
   if (index === 6) {
     return {
-      team: "Fascist",
+      team: t("fascist"),
       index,
       enacted,
-      title: "Fascist victory",
-      description: "Enacting the sixth Fascist policy immediately wins the game for the Fascists.",
+      title: t("fascistVictory"), description: t("fascistVictoryDescription"),
     };
   }
 
   const effects = playerCount <= 6
-    ? ["No executive power.", "No executive power.", "Policy peek: the President secretly views the top three policies.", "Execution: the President chooses a player to execute.", "Execution: the President chooses a player to execute."]
+    ? [t("policyNoPower"), t("policyNoPower"), t("policyPeek"), t("execution"), t("execution")]
     : playerCount <= 8
-      ? ["No executive power.", "Investigation: the President privately learns one player's party membership.", "Special election: the President selects the next President.", "Execution: the President chooses a player to execute.", "Execution: the President chooses a player to execute."]
-      : ["Investigation: the President privately learns one player's party membership.", "Investigation: the President privately learns one player's party membership.", "Special election: the President selects the next President.", "Execution: the President chooses a player to execute.", "Execution: the President chooses a player to execute."];
-  return { team: "Fascist", index, enacted, title: "Fascist policy", description: effects[index - 1] };
+      ? [t("policyNoPower"), t("investigation"), t("specialElection"), t("execution"), t("execution")]
+      : [t("investigation"), t("investigation"), t("specialElection"), t("execution"), t("execution")];
+  return { team: t("fascist"), index, enacted, title: t("fascistPolicy"), description: effects[index - 1] };
 }
 
 function PolicyTrack({ room, onPolicyClick, t }) {
@@ -149,7 +146,7 @@ function PolicyTrack({ room, onPolicyClick, t }) {
               aria-label={`Liberal policy ${index + 1}: ${index < room.liberalPolicies ? "enacted" : "not enacted"}. Show details`}
               className={`sh-policy-slot${index < room.liberalPolicies ? " is-filled" : ""}`}
               key={index}
-              onClick={() => onPolicyClick(policyDetail("liberal", index + 1, room.initialPlayerCount, index < room.liberalPolicies))}
+              onClick={() => onPolicyClick(policyDetail("liberal", index + 1, room.initialPlayerCount, index < room.liberalPolicies, t))}
               type="button"
             />
           ))}
@@ -163,7 +160,7 @@ function PolicyTrack({ room, onPolicyClick, t }) {
               aria-label={`Fascist policy ${index + 1}: ${index < room.fascistPolicies ? "enacted" : "not enacted"}. Show details`}
               className={`sh-policy-slot${index < room.fascistPolicies ? " is-filled" : ""}`}
               key={index}
-              onClick={() => onPolicyClick(policyDetail("fascist", index + 1, room.initialPlayerCount, index < room.fascistPolicies))}
+              onClick={() => onPolicyClick(policyDetail("fascist", index + 1, room.initialPlayerCount, index < room.fascistPolicies, t))}
               type="button"
             />
           ))}
@@ -531,7 +528,7 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
                   <PanelTitle eyebrow={`Players · ${playerCount}/${MAX_PLAYERS}`} icon={Users} title="Gather your table">
                     A game needs {MIN_PLAYERS} to {MAX_PLAYERS} players. Invite the group with the room code.
                   </PanelTitle>
-                  <PlayerSeats room={room} userId={user.id} />
+                  <PlayerSeats room={room} t={t} userId={user.id} />
                   {isHost && <ActionButton disabled={busy || room.players.length >= MAX_PLAYERS} onClick={() => act("game:add-bot")} tone="outline">
                     <Users size={16} /> Add bot
                   </ActionButton>}
@@ -566,7 +563,7 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
                   <PanelTitle eyebrow="Election" icon={Users} title={isPresident ? "Nominate a Chancellor" : `${room.players.find((player) => player.id === room.presidentId)?.username} is President`}>
                     {isPresident ? "Choose an eligible player to form the government." : "Discuss the nomination before everyone votes."}
                   </PanelTitle>
-                  <PlayerSeats room={room} userId={user.id} onSelect={setTargetId} selectedId={targetId} selectableIds={selectablePlayers} />
+                  <PlayerSeats room={room} t={t} userId={user.id} onSelect={setTargetId} selectedId={targetId} selectableIds={selectablePlayers} />
                   {isPresident && <ActionButton disabled={busy || !targetId} onClick={() => act("game:nominate", { candidateId: targetId })}>
                     Nominate Chancellor <ArrowLeft aria-hidden="true" className="sh-join-arrow" size={16} />
                   </ActionButton>}
@@ -635,7 +632,7 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
                     {isPresident ? "Choose a player. This action is required before the next election." : "The President must use the power granted by this policy."}
                   </PanelTitle>
                   {room.power === "policy-peek" && isPresident ? <ActionButton disabled={busy} onClick={() => act("game:policy-peek")}>Peek at policies</ActionButton> : null}
-                  {selectablePlayers.length > 0 && <PlayerSeats room={room} userId={user.id} onSelect={setTargetId} selectedId={targetId} selectableIds={selectablePlayers} />}
+                  {selectablePlayers.length > 0 && <PlayerSeats room={room} t={t} userId={user.id} onSelect={setTargetId} selectedId={targetId} selectableIds={selectablePlayers} />}
                   {isPresident && room.power !== "policy-peek" && <ActionButton disabled={busy || !targetId} onClick={() => act(`game:${room.power}`, { targetId })}>
                     {room.power === "execute" ? "Execute player" : room.power === "special-election" ? "Call special election" : "Investigate party"}
                   </ActionButton>}
@@ -647,7 +644,7 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
                   <PanelTitle eyebrow="Game over" icon={room.winnerTeam === "liberal" ? Shield : Flag} title={`${room.winnerTeam === "liberal" ? "Liberals" : "Fascists"} win`}>
                     {room.winnerReason?.replaceAll("-", " ")}
                   </PanelTitle>
-                  <PlayerSeats room={room} userId={user.id} />
+                  <PlayerSeats room={room} t={t} userId={user.id} />
                   <div className="sh-role-reveal-list">
                     {room.players.map((player) => <span key={player.id}><strong>{player.username}</strong>{player.role} · {player.party}</span>)}
                   </div>
@@ -661,7 +658,7 @@ export default function SecretHitlerGame({ language = "en", onBack, user }) {
 
             <aside className="sh-side-panel">
               <div className="sh-side-heading"><span className="sh-eyebrow">{t("theTable")}</span><strong>{t("active", { count: alive.length })}</strong></div>
-              <PlayerSeats room={room} userId={user.id} />
+              <PlayerSeats room={room} t={t} userId={user.id} />
               <div className="sh-tracker"><span>{t("failedGovernments")}</span><div>{[0, 1, 2].map((step) => <i className={step < room.electionTracker ? "is-filled" : ""} key={step} />)}</div></div>
               <div className="sh-deck-counts"><span>{t("drawPile")} <strong>{room.drawPileCount}</strong></span><span>{t("discardPile")} <strong>{room.discardPileCount}</strong></span></div>
               {secret?.privateIntel?.length > 0 && <div className="sh-private-intel">
