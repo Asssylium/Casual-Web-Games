@@ -242,6 +242,10 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .live-table-panel .live-table-heading { display: none; }
 .live-table-panel .table-panel { order: 0; }
 .live-table-panel .player-orbit { width: 100%; min-height: clamp(420px, 62vh, 640px); }
+.turn-activity { display: grid; gap: 5px; padding: 13px 15px; border: 1px solid #38bdf855; border-left: 3px solid #38bdf8; border-radius: 10px; background: linear-gradient(90deg, #0c2634, #111b30); color: #cbd5e1; font-size: .82rem; line-height: 1.45; }
+.turn-activity strong { color: #f0f9ff; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: .92rem; }
+.turn-activity > span:last-child { color: #9ccfe4; }
+.turn-activity-claim { color: #f5d98b; font-weight: 700; }
 .turn-reopen-button { justify-self: center; min-width: 190px; }
 .turn-panel, .table-panel, .winner-panel { padding: 20px; border: 1px solid #ffffff18; border-radius: 13px; background: #0c1220; }
 .turn-panel-heading { margin-bottom: 18px; }

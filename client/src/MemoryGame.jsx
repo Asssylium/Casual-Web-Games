@@ -190,6 +190,37 @@ function PlayerOrbit({ room, userId, revealCards = null, ownGifts = [], selected
   );
 }
 
+function TurnActivity({ room }) {
+  const activePlayer = room.players.find((player) => player.id === room.currentTurnId);
+  if (!activePlayer || room.phase !== "playing") return null;
+
+  let actorName = activePlayer.username;
+  let action = "is choosing which gift to pass.";
+  let options = "Name the gift, then pass it in the direction shown on its card.";
+
+  if (room.pending) {
+    const receiver = room.players.find((player) => player.id === room.pending.toId);
+    actorName = receiver?.username || "The receiver";
+    action = "is deciding whether the claim is true.";
+    options = "Available options: Accept gift or Call bluff.";
+  } else if (room.drawnBy === activePlayer.id) {
+    action = "has drawn a gift and is preparing their claim.";
+    options = "Available options: name the gift and pass it in the direction shown on its card.";
+  } else if (activePlayer.cardCount === 1) {
+    action = "must draw a gift from the gift shop.";
+    options = "Available option: Draw a gift.";
+  }
+
+  return (
+    <aside aria-live="polite" className="turn-activity">
+      <span className="eyebrow">Current action</span>
+      <strong>{actorName} {action}</strong>
+      {room.pending && <span className="turn-activity-claim">Claim: “{room.pending.claimedName}” · passed {room.pending.direction}</span>}
+      <span>{options}</span>
+    </aside>
+  );
+}
+
 function ObjectCard({ card, label = "", locked = false }) {
   const content = (
     <>
@@ -813,6 +844,7 @@ export default function MemoryGame({ language = "en", onBack, user }) {
                         ownGifts={[...hand, ...(drawnCard ? [drawnCard] : [])]}
                       />
                     </div>
+                    <TurnActivity room={room} />
                     {(isMyTurn || isReceiver) && (
                       <GameButton className="turn-reopen-button" disabled={busy} onClick={openTurnDialog}>
                         {isReceiver ? "Review gift offer" : "Open turn controls"}
