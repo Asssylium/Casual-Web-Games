@@ -239,24 +239,28 @@ export default function MemoryGame({ onBack, user }) {
     if (!soundOn) return;
     const context = prepareSound();
     if (!context || context.state !== "running") return;
-    const settings = {
-      draw: [520, 0.09, "sine"],
-      turn: [740, 0.12, "triangle"],
-      success: [660, 0.16, "sine"],
-      warning: [220, 0.2, "sawtooth"],
-    }[kind];
-    if (!settings) return;
-    const [frequency, duration, type] = settings;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, context.currentTime);
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.06, context.currentTime + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + duration + 0.02);
+    const playTone = (frequency, start, duration, type = "sine", volume = 0.07, endFrequency = frequency) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, start);
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), start + duration);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
+    };
+    if (kind === "damage") {
+      playTone(155, context.currentTime, 0.32, "sawtooth", 0.075, 58);
+      playTone(76, context.currentTime + 0.025, 0.42, "triangle", 0.1, 42);
+    }
+    if (kind === "win") {
+      [523, 659, 784].forEach((frequency, index) => {
+        playTone(frequency, context.currentTime + index * 0.11, 0.32, "triangle", 0.065, frequency * 1.03);
+      });
+    }
   }
 
   function applyGameState(result) {
@@ -417,7 +421,6 @@ export default function MemoryGame({ onBack, user }) {
       return;
     }
     prepareSound();
-    playSound("draw");
     setError("");
     setBusy(true);
     void postGameAction(eventName, payload)
@@ -543,13 +546,8 @@ export default function MemoryGame({ onBack, user }) {
     const previousCue = previousCueRef.current;
     previousCueRef.current = cue;
     if (!previousCue) return;
-    if (claimResultKey) {
-      playSound(room.lastReveal?.outcome === "lie" ? "success" : "warning");
-    } else if (room.phase === "gift-reveal") {
-      playSound("draw");
-    } else if (room.phase === "playing" && room.currentTurnId === user.id) {
-      playSound("turn");
-    }
+    if (room.phase === "finished") playSound("win");
+    if (claimResultKey && ["accepted-lie", "truth"].includes(room.lastReveal?.outcome)) playSound("damage");
   }, [claimResultKey, room?.currentTurnId, room?.phase, room?.revealedGift?.id, soundOn, user.id]);
 
   useEffect(() => {
