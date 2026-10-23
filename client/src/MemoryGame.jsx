@@ -246,7 +246,9 @@ export default function MemoryGame({ language = "en", onBack, user }) {
   const rulesDialogRef = useRef(null);
   const audioRefs = useRef({});
   const openingLobbyCodeRef = useRef("");
-  const previousSoundCueRef = useRef("");
+  const previousClaimSoundRef = useRef(null);
+  const claimSoundReadyRef = useRef(false);
+  const previousPhaseRef = useRef(null);
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
@@ -465,12 +467,6 @@ export default function MemoryGame({ language = "en", onBack, user }) {
     setBusy(true);
     void postGameAction(eventName, payload)
       .then((result) => {
-        const outcome = result.room?.lastReveal?.outcome;
-        if (["accepted-lie", "truth"].includes(outcome)) playMemorySound("loss");
-        if (result.room?.phase === "finished") playMemorySound("win");
-        if (result.room) {
-          previousSoundCueRef.current = `${result.room.phase}:${result.room.lastReveal?.outcome || ""}:${result.room.lastReveal?.penaltyCount || ""}`;
-        }
         applyGameState(result);
         setBusy(false);
         onSuccess?.(result);
@@ -588,14 +584,24 @@ export default function MemoryGame({ language = "en", onBack, user }) {
   ].join(":");
 
   useEffect(() => {
-    const cue = room ? `${room.phase}:${room.lastReveal?.outcome || ""}:${room.lastReveal?.penaltyCount || ""}` : "";
-    if (!cue || previousSoundCueRef.current === cue) return;
-    const previousCue = previousSoundCueRef.current;
-    previousSoundCueRef.current = cue;
-    if (!previousCue) return;
-    if (room.phase === "finished") playMemorySound("win");
-    if (["accepted-lie", "truth"].includes(room.lastReveal?.outcome)) playMemorySound("loss");
-  }, [room?.lastReveal?.outcome, room?.lastReveal?.penaltyCount, room?.phase]);
+    const claimKey = claimResultKey || null;
+    if (!claimSoundReadyRef.current) {
+      claimSoundReadyRef.current = true;
+      previousClaimSoundRef.current = claimKey;
+      previousPhaseRef.current = room?.phase || null;
+      return;
+    }
+
+    if (claimKey && claimKey !== previousClaimSoundRef.current && room?.lastReveal?.penaltyPlayerId) {
+      playMemorySound("loss");
+    }
+    previousClaimSoundRef.current = claimKey;
+
+    if (room?.phase === "finished" && previousPhaseRef.current !== "finished") {
+      playMemorySound("win");
+    }
+    previousPhaseRef.current = room?.phase || null;
+  }, [claimResultKey, room?.lastReveal?.penaltyPlayerId, room?.phase]);
 
   useEffect(() => {
     const dialog = claimResultDialogRef.current;
