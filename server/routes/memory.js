@@ -47,7 +47,7 @@ function publicState(room) {
       id: player.userId,
       username: player.username,
       isBot: isBot(player),
-      eliminated: player.eliminated,
+      eliminated: Boolean(player.eliminated),
       connected: player.connected || isBot(player),
       cardCount: player.hand.length,
       penaltyCount: player.penaltyCards?.length || 0,
@@ -73,7 +73,7 @@ function playerHand(room, userId) {
   return {
     cards: player && !player.eliminated ? player.hand : [],
     blockedCardId: player?.blockedCardId || null,
-    drawnCard: room.drawnBy === userId ? room.drawnCard : null,
+    drawnCard: player && !player.eliminated && room.drawnBy === userId ? room.drawnCard : null,
   };
 }
 
@@ -255,19 +255,27 @@ function awardPenalty(room, player, card) {
   player.penaltyCards.push(card);
   if (player.penaltyCards.length < PENALTY_LIMIT) return false;
 
-  const lowestScore = Math.min(...room.players.map((item) => item.penaltyCards.length));
-  room.winnerIds = room.players
-    .filter((item) => item.penaltyCards.length === lowestScore)
-    .map((item) => item.userId);
-  room.winnerId = room.winnerIds.length === 1 ? room.winnerIds[0] : null;
+  player.eliminated = true;
+  player.hand = [];
+  player.blockedCardId = null;
+  const activePlayers = room.players.filter((item) => !item.eliminated);
+  if (activePlayers.length > 1) {
+    room.winnerId = null;
+    room.winnerIds = [];
+    room.notice = `${player.username} is out of points and now spectating.`;
+    return true;
+  }
+
+  room.winnerIds = activePlayers.map((item) => item.userId);
+  room.winnerId = activePlayers[0]?.userId || null;
   room.phase = "finished";
   room.currentTurnId = null;
   room.drawnCard = undefined;
   room.drawnBy = null;
   room.revealEndsAt = null;
-  room.notice = room.winnerIds.length === 1
-    ? `${room.players.find((item) => item.userId === room.winnerId)?.username} wins with the most points remaining.`
-    : "The game is tied for the most points remaining.";
+  room.notice = room.winnerId
+    ? `${activePlayers[0].username} is the last player standing and wins.`
+    : "No players remain in the round.";
   return true;
 }
 
@@ -532,10 +540,6 @@ router.post("/", async (req, res, next) => {
     }
 
     if (eventName === "game:heartbeat" || eventName === "game:reconnect") {
-      if (eventName === "game:reconnect" && player.eliminated) {
-        return sendFailure(res, 403, "You are no longer in this game");
-      }
-
       const now = new Date();
       const staleUserIds = room.players
         .filter((item) => item.userId !== userId && item.connected &&
@@ -552,7 +556,7 @@ router.post("/", async (req, res, next) => {
       }
 
       const filter = { _id: room._id, "players.userId": userId };
-      if (eventName === "game:reconnect" && room.phase === "playing" && !room.currentTurnId) {
+      if (eventName === "game:reconnect" && !player.eliminated && room.phase === "playing" && !room.currentTurnId) {
         filter.currentTurnId = null;
         updates.currentTurnId = userId;
       }
@@ -575,6 +579,7 @@ router.post("/", async (req, res, next) => {
     player.lastSeenAt = new Date();
 
     if (eventName === "game:draw") {
+      if (player.eliminated) return sendFailure(res, 403, "You are spectating this round");
       if (room.phase !== "playing") return sendFailure(res, 409, "The game is not ready for a gift draw");
       if (room.currentTurnId !== userId) return sendFailure(res, 403, "It is not your turn");
       if (room.pending?.card) return sendFailure(res, 409, "Resolve the current gift before drawing another");
@@ -611,6 +616,7 @@ router.post("/", async (req, res, next) => {
       if (room.phase === "finished") room.round += 1;
       beginMemoryPhase(room, startingPlayerId);
     } else if (eventName === "game:pass") {
+      if (player.eliminated) return sendFailure(res, 403, "You are spectating this round");
       if (room.phase !== "playing") return sendFailure(res, 409, "The game is not accepting a pass");
       if (room.currentTurnId !== userId) return sendFailure(res, 403, "It is not your turn");
       if (room.pending?.card) return sendFailure(res, 409, "A card is already being considered");
@@ -635,6 +641,7 @@ router.post("/", async (req, res, next) => {
       room.lastReveal = null;
       room.notice = `${player.username} passed a card to ${receiver.username}.`;
     } else if (eventName === "game:accept" || eventName === "game:challenge") {
+      if (player.eliminated) return sendFailure(res, 403, "You are spectating this round");
       if (room.phase !== "playing" || !room.pending?.card) {
         return sendFailure(res, 409, "There is no card to respond to");
       }

@@ -230,7 +230,7 @@ test("accepting a false claim awards the receiver a penalty point", () => {
   assert.equal(room.lastReveal.penaltyPlayerId, "p2");
 });
 
-test("three penalty points end the game and retain tied lowest scorers", () => {
+test("three penalty points eliminate a player while the other players continue", () => {
   const room = {
     phase: "playing",
     players: [
@@ -241,10 +241,27 @@ test("three penalty points end the game and retain tied lowest scorers", () => {
   };
 
   assert.equal(awardPenalty(room, room.players[0], { id: "e" }), true);
-  assert.equal(room.phase, "finished");
+  assert.equal(room.phase, "playing");
   assert.equal(room.players[0].penaltyCards.length, 3);
-  assert.deepEqual(room.winnerIds, ["p2", "p3"]);
+  assert.equal(room.players[0].eliminated, true);
+  assert.deepEqual(room.winnerIds || [], []);
   assert.equal(room.winnerId, null);
+});
+
+test("the final active player wins after every opponent is eliminated", () => {
+  const room = {
+    phase: "playing",
+    players: [
+      { userId: "p1", username: "One", penaltyCards: [{ id: "a" }, { id: "b" }] },
+      { userId: "p2", username: "Two", penaltyCards: [{ id: "c" }, { id: "d" }] },
+    ],
+  };
+
+  assert.equal(awardPenalty(room, room.players[0], { id: "e" }), true);
+  assert.equal(room.phase, "finished");
+  assert.deepEqual(room.winnerIds, ["p2"]);
+  assert.equal(room.winnerId, "p2");
+  assert.match(room.notice, /last player standing/);
 });
 
 test("public room state shares only arrows for held gifts, not their faces or penalty-card contents", () => {

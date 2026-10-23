@@ -167,7 +167,8 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .room-player { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-height: 48px; padding: 8px 11px; border: 1px solid #ffffff13; border-radius: 10px; background: #0c1220; }
 .seat-number { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #ffffff12; color: #b6bfd0; font-size: .78rem; }
 .seat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .88rem; }
-.seat-cards, .seat-offline { color: #9ba7bc; font-size: .73rem; }
+.seat-cards, .seat-offline, .seat-spectator { color: #9ba7bc; font-size: .73rem; }
+.seat-spectator { color: #d1d5db; font-weight: 700; }
 .turn-indicator { padding: 4px 7px; border-radius: 6px; background: #302750; color: #c4b5fd; font-size: .68rem; }
 .room-player-turn { border-color: #a78bfa66; background: #a78bfa10; }
 .room-player-out { opacity: .48; }
@@ -367,7 +368,7 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
   .player-orbit:not(.player-orbit-two) .orbit-card-icon { font-size: 1.1rem; }
   .player-orbit:not(.player-orbit-two) .orbit-direction { font-size: .52rem; }
   .room-player { grid-template-columns: 30px minmax(0, 1fr) auto; }
-  .turn-indicator, .seat-offline { grid-column: 2 / -1; justify-self: start; }
+.turn-indicator, .seat-offline, .seat-spectator { grid-column: 2 / -1; justify-self: start; }
   .object-card { width: min(100%, 132px); }
   .game-tile { min-height: 142px; padding: 14px; }
   .menu-heading h1 { font-size: 1.65rem; }

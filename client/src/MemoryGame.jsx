@@ -64,6 +64,7 @@ function PlayerList({ players, currentTurnId, userId }) {
             {`${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.points ?? Math.max(0, 3 - (player.penaltyCount || 0))} pt`}
           </span>
           {player.id === currentTurnId && <span className="turn-indicator">Turn</span>}
+          {player.eliminated && <span className="seat-spectator">Spectating</span>}
           {!player.connected && !player.eliminated && <span className="seat-offline">Offline</span>}
         </div>
       ))}
@@ -211,8 +212,8 @@ export default function MemoryGame({ onBack, user }) {
   const claimResultDialogRef = useRef(null);
   const rulesDialogRef = useRef(null);
   const audioRefs = useRef({});
-  const openingSoundPlayedRef = useRef(false);
-  const previousCueRef = useRef("");
+  const openingLobbyCodeRef = useRef("");
+  const previousSoundCueRef = useRef("");
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
@@ -226,16 +227,15 @@ export default function MemoryGame({ onBack, user }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [soundOn, setSoundOn] = useState(true);
+  const [soundOn, setSoundOn] = useState(() => window.localStorage.getItem("memory-sound-muted") !== "true");
 
-  function playSound(kind) {
+  function playMemorySound(kind) {
     if (!soundOn) return;
     const audio = audioRefs.current[kind];
     if (!audio) return;
     audio.currentTime = 0;
     void audio.play().catch(() => {});
   }
-
   function applyGameState(result) {
     setRoom(result.room || null);
     setHand(result.hand?.cards || []);
@@ -266,9 +266,9 @@ export default function MemoryGame({ onBack, user }) {
   }
 
   useEffect(() => {
-    const soundPath = (name) => `${import.meta.env.BASE_URL}sounds/${encodeURIComponent(name)}`;
+    const soundPath = (name) => `${import.meta.env.BASE_URL}sounds/memory/${encodeURIComponent(name)}`;
     audioRefs.current = {
-      damage: new Audio(soundPath("Loose sound take 4 second.mp3")),
+      loss: new Audio(soundPath("Loose sound take 4 second.mp3")),
       win: new Audio(soundPath("Memory Winning sound take 6 second.mp3")),
       opening: new Audio(soundPath("Opening sound for memory.mp3")),
     };
@@ -286,10 +286,10 @@ export default function MemoryGame({ onBack, user }) {
   }, []);
 
   useEffect(() => {
-    if (!initialized || openingSoundPlayedRef.current) return;
-    openingSoundPlayedRef.current = true;
-    playSound("opening");
-  }, [initialized]);
+    if (!soundOn || !initialized || room?.phase !== "lobby" || !room.code || openingLobbyCodeRef.current === room.code) return;
+    openingLobbyCodeRef.current = room.code;
+    playMemorySound("opening");
+  }, [initialized, room?.code, room?.phase, soundOn]);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,17 +432,10 @@ export default function MemoryGame({ onBack, user }) {
     void postGameAction(eventName, payload)
       .then((result) => {
         const outcome = result.room?.lastReveal?.outcome;
-        if (["accepted-lie", "truth"].includes(outcome)) playSound("damage");
-        if (result.room?.phase === "finished") playSound("win");
+        if (["accepted-lie", "truth"].includes(outcome)) playMemorySound("loss");
+        if (result.room?.phase === "finished") playMemorySound("win");
         if (result.room) {
-          previousCueRef.current = `${result.room.phase}:${result.room.currentTurnId}:${result.room.revealedGift?.id || ""}:${result.room.lastReveal ? [
-            result.room.lastReveal.outcome,
-            result.room.lastReveal.fromName,
-            result.room.lastReveal.toName,
-            result.room.lastReveal.claimedName,
-            result.room.lastReveal.card?.name,
-            result.room.lastReveal.penaltyCount,
-          ].join(":") : ""}`;
+          previousSoundCueRef.current = `${result.room.phase}:${result.room.lastReveal?.outcome || ""}:${result.room.lastReveal?.penaltyCount || ""}`;
         }
         applyGameState(result);
         setBusy(false);
@@ -520,8 +513,9 @@ export default function MemoryGame({ onBack, user }) {
 
   const currentUser = room?.players.find((player) => player.id === user.id);
   const isHost = room?.hostId === user.id;
-  const isMyTurn = room?.currentTurnId === user.id;
-  const isReceiver = room?.pending?.toId === user.id;
+  const isSpectating = Boolean(currentUser?.eliminated);
+  const isMyTurn = !isSpectating && room?.currentTurnId === user.id;
+  const isReceiver = !isSpectating && room?.pending?.toId === user.id;
   const giftToPassNow = drawnCard || (hand.length > 1 ? hand[0] : null);
   const shouldShowGiftReveal = Boolean(room?.phase === "gift-reveal" && room.revealedGift);
   const selectedPassDirection = giftToPassNow?.direction === "both"
@@ -560,14 +554,14 @@ export default function MemoryGame({ onBack, user }) {
   ].join(":");
 
   useEffect(() => {
-    const cue = room ? `${room.phase}:${room.currentTurnId}:${room.revealedGift?.id || ""}:${claimResultKey || ""}` : "";
-    if (!cue || previousCueRef.current === cue) return;
-    const previousCue = previousCueRef.current;
-    previousCueRef.current = cue;
+    const cue = room ? `${room.phase}:${room.lastReveal?.outcome || ""}:${room.lastReveal?.penaltyCount || ""}` : "";
+    if (!cue || previousSoundCueRef.current === cue) return;
+    const previousCue = previousSoundCueRef.current;
+    previousSoundCueRef.current = cue;
     if (!previousCue) return;
-    if (room.phase === "finished") playSound("win");
-    if (claimResultKey && ["accepted-lie", "truth"].includes(room.lastReveal?.outcome)) playSound("damage");
-  }, [claimResultKey, room?.currentTurnId, room?.phase, room?.revealedGift?.id, soundOn, user.id]);
+    if (room.phase === "finished") playMemorySound("win");
+    if (["accepted-lie", "truth"].includes(room.lastReveal?.outcome)) playMemorySound("loss");
+  }, [room?.lastReveal?.outcome, room?.lastReveal?.penaltyCount, room?.phase]);
 
   useEffect(() => {
     const dialog = claimResultDialogRef.current;
@@ -692,17 +686,29 @@ export default function MemoryGame({ onBack, user }) {
             {room.phase !== "lobby" && (
               <span className="gift-shop-count">Gift shop · {room.giftShopCount}</span>
             )}
-            <button
-              aria-label={soundOn ? "Mute game sounds" : "Enable game sounds"}
-              className="sound-toggle"
-              onClick={() => {
-                setSoundOn((enabled) => !enabled);
-              }}
-              title={soundOn ? "Mute sounds" : "Enable sounds"}
-              type="button"
-            >
-              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </button>
+            {room.phase === "lobby" && (
+              <button
+                aria-label={soundOn ? "Mute Memory Pass sounds" : "Enable Memory Pass sounds"}
+                className="sound-toggle"
+                onClick={() => {
+                  setSoundOn((enabled) => {
+                    const nextEnabled = !enabled;
+                    window.localStorage.setItem("memory-sound-muted", String(!nextEnabled));
+                    if (!nextEnabled) {
+                      Object.values(audioRefs.current).forEach((audio) => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                      });
+                    }
+                    return nextEnabled;
+                  });
+                }}
+                title={soundOn ? "Mute sounds" : "Enable sounds"}
+                type="button"
+              >
+                {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
+            )}
             {isHost && (
               <button className="cancel-game-button" disabled={busy} onClick={cancelGame} type="button">
                 <X aria-hidden="true" size={15} /> Cancel game
@@ -822,7 +828,7 @@ export default function MemoryGame({ onBack, user }) {
                     ).filter(Boolean).join(" and ") || "No winner"}
                     {(room.winnerIds || []).length > 1 ? " tie" : " wins"}
                   </h2>
-                  <p className="muted">The player with the most points remaining wins.</p>
+                  <p className="muted">The last player with points remaining wins.</p>
                   <ResultsTable players={room.players} userId={user.id} winnerIds={room.winnerIds || []} />
                   {isHost && (
                     <GameButton disabled={busy} onClick={startGame}>
@@ -1005,7 +1011,7 @@ export default function MemoryGame({ onBack, user }) {
             <div><span className="eyebrow">Memory Pass guide</span><h2 id="memory-rules-title">How to play</h2></div>
             <button aria-label="Close rules" className="turn-dialog-close" onClick={() => rulesDialogRef.current?.close()} type="button"><X size={18} /></button>
           </div>
-          <section><h3>Goal</h3><p>Everyone begins with 3 points. Wrong decisions cost a point; reaching 0 ends the game. The player with the most points remaining wins.</p></section>
+          <section><h3>Goal</h3><p>Everyone begins with 3 points. Wrong decisions cost a point. At 0 points you become a spectator; the last player still standing wins.</p></section>
           <section><h3>Remember the table</h3><p>At the start, memorize every gift and its arrow. After the reveal, opponents’ gifts are face down, but their arrows remain visible.</p></section>
           <section><h3>Your turn</h3><p>If you hold one gift, draw a new one. Pass the drawn gift, or when holding two gifts pass the oldest one, in its arrow’s direction. A double arrow lets you choose left or right.</p></section>
           <section><h3>Claims and bluffs</h3><p>Name the gift you are passing. The receiver can accept or call bluff. Accepting a lie costs the receiver a point. Calling bluff costs the giver a point if it was a lie, or the receiver a point if it was true.</p></section>
