@@ -9,8 +9,11 @@ import {
   Crown,
   Eye,
   Flag,
+  Info,
   Sparkles,
   Users,
+  Volume2,
+  VolumeX,
   Wifi,
   WifiOff,
   X,
@@ -58,7 +61,7 @@ function PlayerList({ players, currentTurnId, userId }) {
             {player.username}{player.id === userId ? " (you)" : ""}
           </span>
           <span className="seat-cards">
-            {`${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.penaltyCount || 0} pt`}
+            {`${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.points ?? Math.max(0, 3 - (player.penaltyCount || 0))} pt`}
           </span>
           {player.id === currentTurnId && <span className="turn-indicator">Turn</span>}
           {!player.connected && !player.eliminated && <span className="seat-offline">Offline</span>}
@@ -129,7 +132,7 @@ function PlayerOrbit({ room, userId, revealCards = null, ownGifts = [], selected
               </div>
             ) : (
               <span className="orbit-card-count">
-                {player.eliminated ? "Out" : `${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.penaltyCount || 0} pt`}
+                {player.eliminated ? "Out" : `${player.cardCount} gift${player.cardCount === 1 ? "" : "s"} · ${player.points ?? Math.max(0, 3 - (player.penaltyCount || 0))} pt`}
               </span>
             )}
             {!revealedCard && !player.eliminated && player.id === userId && ownGifts.length > 0 && (
@@ -206,6 +209,9 @@ export default function MemoryGame({ onBack, user }) {
   const turnDialogRef = useRef(null);
   const giftRevealDialogRef = useRef(null);
   const claimResultDialogRef = useRef(null);
+  const rulesDialogRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const previousCueRef = useRef("");
   const [initialized, setInitialized] = useState(false);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState(null);
@@ -219,6 +225,39 @@ export default function MemoryGame({ onBack, user }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+
+  function prepareSound() {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    audioContextRef.current ||= new AudioContext();
+    void audioContextRef.current.resume();
+    return audioContextRef.current;
+  }
+
+  function playSound(kind) {
+    if (!soundOn) return;
+    const context = prepareSound();
+    if (!context || context.state !== "running") return;
+    const settings = {
+      draw: [520, 0.09, "sine"],
+      turn: [740, 0.12, "triangle"],
+      success: [660, 0.16, "sine"],
+      warning: [220, 0.2, "sawtooth"],
+    }[kind];
+    if (!settings) return;
+    const [frequency, duration, type] = settings;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, context.currentTime);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.06, context.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + duration + 0.02);
+  }
 
   function applyGameState(result) {
     setRoom(result.room || null);
@@ -377,6 +416,8 @@ export default function MemoryGame({ onBack, user }) {
       setError("Connecting to the game server...");
       return;
     }
+    prepareSound();
+    playSound("draw");
     setError("");
     setBusy(true);
     void postGameAction(eventName, payload)
@@ -497,6 +538,21 @@ export default function MemoryGame({ onBack, user }) {
   ].join(":");
 
   useEffect(() => {
+    const cue = room ? `${room.phase}:${room.currentTurnId}:${room.revealedGift?.id || ""}:${claimResultKey || ""}` : "";
+    if (!cue || previousCueRef.current === cue) return;
+    const previousCue = previousCueRef.current;
+    previousCueRef.current = cue;
+    if (!previousCue) return;
+    if (claimResultKey) {
+      playSound(room.lastReveal?.outcome === "lie" ? "success" : "warning");
+    } else if (room.phase === "gift-reveal") {
+      playSound("draw");
+    } else if (room.phase === "playing" && room.currentTurnId === user.id) {
+      playSound("turn");
+    }
+  }, [claimResultKey, room?.currentTurnId, room?.phase, room?.revealedGift?.id, soundOn, user.id]);
+
+  useEffect(() => {
     const dialog = claimResultDialogRef.current;
     if (!dialog) return;
     if (claimResultKey && !dialog.open) dialog.showModal();
@@ -505,6 +561,10 @@ export default function MemoryGame({ onBack, user }) {
 
   function openTurnDialog() {
     if (!turnDialogRef.current?.open) turnDialogRef.current?.showModal();
+  }
+
+  function openRules() {
+    if (!rulesDialogRef.current?.open) rulesDialogRef.current?.showModal();
   }
 
   function closeClaimResult() {
@@ -545,6 +605,9 @@ export default function MemoryGame({ onBack, user }) {
             <ArrowLeft aria-hidden="true" size={16} /> Games
           </button>
         )}
+        <button className="rules-button" onClick={openRules} type="button">
+          <Info aria-hidden="true" size={16} /> Rules
+        </button>
         <div className={`connection-state${connected ? " is-connected" : ""}`}>
           {connected ? <Wifi aria-hidden="true" size={15} /> : <WifiOff aria-hidden="true" size={15} />}
           {connected ? "Connected" : "Connecting"}
@@ -598,7 +661,7 @@ export default function MemoryGame({ onBack, user }) {
             <div className="quick-rules">
               <span><Eye size={15} /> Memorize each revealed gift</span>
               <span><ArrowRight size={15} /> Pass the oldest gift by its arrow</span>
-              <span><Flag size={15} /> Fewest points wins at three</span>
+              <span><Flag size={15} /> Start with 3 points; reach 0 and lose</span>
             </div>
           </div>
         </div>
@@ -612,6 +675,18 @@ export default function MemoryGame({ onBack, user }) {
             {room.phase !== "lobby" && (
               <span className="gift-shop-count">Gift shop · {room.giftShopCount}</span>
             )}
+            <button
+              aria-label={soundOn ? "Mute game sounds" : "Enable game sounds"}
+              className="sound-toggle"
+              onClick={() => {
+                if (!soundOn) prepareSound();
+                setSoundOn((enabled) => !enabled);
+              }}
+              title={soundOn ? "Mute sounds" : "Enable sounds"}
+              type="button"
+            >
+              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
             {isHost && (
               <button className="cancel-game-button" disabled={busy} onClick={cancelGame} type="button">
                 <X aria-hidden="true" size={15} /> Cancel game
@@ -669,7 +744,7 @@ export default function MemoryGame({ onBack, user }) {
                 <span className="eyebrow">How this table plays</span>
                 <h3>Remember what you see.</h3>
                 <p>Cards stay hidden after the reveal. Pass one to the indicated neighbor and name it. They decide to accept or call your bluff.</p>
-                <div className="lobby-aside-note"><Sparkles size={15} /> Three penalty points end the game.</div>
+                <div className="lobby-aside-note"><Sparkles size={15} /> Everyone starts with 3 points.</div>
               </aside>
             </div>
           )}
@@ -731,7 +806,7 @@ export default function MemoryGame({ onBack, user }) {
                     ).filter(Boolean).join(" and ") || "No winner"}
                     {(room.winnerIds || []).length > 1 ? " tie" : " wins"}
                   </h2>
-                  <p className="muted">The player with the fewest penalty points wins.</p>
+                  <p className="muted">The player with the most points remaining wins.</p>
                   <ResultsTable players={room.players} userId={user.id} winnerIds={room.winnerIds || []} />
                   {isHost && (
                     <GameButton disabled={busy} onClick={startGame}>
@@ -902,11 +977,23 @@ export default function MemoryGame({ onBack, user }) {
             <p>{claimResultCopy}</p>
             <ObjectCard card={claimResult.card} label={`Claimed: ${claimResult.claimedName}`} />
             <strong className="claim-result-penalty">
-              {claimResult.penaltyPlayerName} receives a point ({claimResult.penaltyCount}/3)
+              {claimResult.penaltyPlayerName} loses a point ({Math.max(0, 3 - claimResult.penaltyCount)}/3 remaining)
             </strong>
             <GameButton onClick={closeClaimResult}>Continue</GameButton>
           </div>
         )}
+      </dialog>
+      <dialog aria-labelledby="memory-rules-title" className="game-rules-dialog" ref={rulesDialogRef}>
+        <div className="game-rules-content">
+          <div className="game-rules-heading">
+            <div><span className="eyebrow">Memory Pass guide</span><h2 id="memory-rules-title">How to play</h2></div>
+            <button aria-label="Close rules" className="turn-dialog-close" onClick={() => rulesDialogRef.current?.close()} type="button"><X size={18} /></button>
+          </div>
+          <section><h3>Goal</h3><p>Everyone begins with 3 points. Wrong decisions cost a point; reaching 0 ends the game. The player with the most points remaining wins.</p></section>
+          <section><h3>Remember the table</h3><p>At the start, memorize every gift and its arrow. After the reveal, opponents’ gifts are face down, but their arrows remain visible.</p></section>
+          <section><h3>Your turn</h3><p>If you hold one gift, draw a new one. Pass the drawn gift, or when holding two gifts pass the oldest one, in its arrow’s direction. A double arrow lets you choose left or right.</p></section>
+          <section><h3>Claims and bluffs</h3><p>Name the gift you are passing. The receiver can accept or call bluff. Accepting a lie costs the receiver a point. Calling bluff costs the giver a point if it was a lie, or the receiver a point if it was true.</p></section>
+        </div>
       </dialog>
     </section>
   );
@@ -915,11 +1002,11 @@ export default function MemoryGame({ onBack, user }) {
 function ResultsTable({ players, userId, winnerIds = [] }) {
   const winners = new Set(winnerIds);
   const rankings = [...players]
-    .sort((left, right) => (left.penaltyCount || 0) - (right.penaltyCount || 0) || left.username.localeCompare(right.username));
+    .sort((left, right) => (right.points ?? Math.max(0, 3 - (right.penaltyCount || 0))) - (left.points ?? Math.max(0, 3 - (left.penaltyCount || 0))) || left.username.localeCompare(right.username));
   let previousScore = null;
   let rank = 0;
   const rows = rankings.map((player, index) => {
-    const points = player.penaltyCount || 0;
+    const points = player.points ?? Math.max(0, 3 - (player.penaltyCount || 0));
     if (points !== previousScore) rank = index + 1;
     previousScore = points;
     return { player, points, rank, won: winners.has(player.id) };

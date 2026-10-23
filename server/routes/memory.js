@@ -51,6 +51,7 @@ function publicState(room) {
       connected: player.connected || isBot(player),
       cardCount: player.hand.length,
       penaltyCount: player.penaltyCards?.length || 0,
+      points: Math.max(0, PENALTY_LIMIT - (player.penaltyCards?.length || 0)),
       giftDirections: player.hand.map((card) => card.direction),
     })),
     currentTurnId: room.currentTurnId,
@@ -265,8 +266,8 @@ function awardPenalty(room, player, card) {
   room.drawnBy = null;
   room.revealEndsAt = null;
   room.notice = room.winnerIds.length === 1
-    ? `${room.players.find((item) => item.userId === room.winnerId)?.username} wins with the fewest penalty points.`
-    : "The game is tied for the fewest penalty points.";
+    ? `${room.players.find((item) => item.userId === room.winnerId)?.username} wins with the most points remaining.`
+    : "The game is tied for the most points remaining.";
   return true;
 }
 
@@ -359,7 +360,7 @@ function scheduleBotTurn(room) {
   const roomId = room._id.toString();
   if (scheduledBotRooms.has(roomId)) return;
   scheduledBotRooms.add(roomId);
-  const thinkingDelay = 3_000 + crypto.randomInt(4_001);
+  const thinkingDelay = 3_000 + crypto.randomInt(2_001);
   const revealDelay = room.phase === "gift-reveal" && room.revealEndsAt
     ? Math.max(thinkingDelay, room.revealEndsAt - Date.now() + thinkingDelay)
     : thinkingDelay;

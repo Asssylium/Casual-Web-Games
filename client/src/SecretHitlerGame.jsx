@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   Flag,
+  Info,
   Shield,
   Skull,
   Users,
@@ -134,6 +135,7 @@ function VoteResults({ results, players }) {
 
 export default function SecretHitlerGame({ onBack, user }) {
   const clientRef = useRef(null);
+  const rulesDialogRef = useRef(null);
   const [room, setRoom] = useState(null);
   const [secret, setSecret] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -312,6 +314,10 @@ export default function SecretHitlerGame({ onBack, user }) {
     }
   }
 
+  function openRules() {
+    if (!rulesDialogRef.current?.open) rulesDialogRef.current?.showModal();
+  }
+
   const isHost = room?.hostId === user.id;
   const isPresident = room?.presidentId === user.id;
   const isChancellor = room?.chancellorId === user.id;
@@ -332,6 +338,7 @@ export default function SecretHitlerGame({ onBack, user }) {
         <button className="sh-back" onClick={canLeave ? leaveRoom : onBack} type="button">
           <ArrowLeft aria-hidden="true" size={16} /> Games
         </button>
+        <button className="sh-rules-button" onClick={openRules} type="button"><Info aria-hidden="true" size={16} /> Rules</button>
         <div className={`sh-connection${connected ? " is-connected" : ""}`}>
           {connected ? <Wifi size={15} /> : realtimeAvailable ? <WifiOff size={15} /> : room ? <WifiOff size={15} /> : <Wifi size={15} />}
           {connected ? "Live table" : room ? "Polling sync" : "Ready"}
@@ -386,8 +393,16 @@ export default function SecretHitlerGame({ onBack, user }) {
             <button aria-label={copied ? "Room code copied" : `Copy room code ${room.code}`} className="sh-icon-button" onClick={copyRoomCode} title="Copy invite code" type="button">
               {copied ? <Check size={16} /> : <Copy size={16} />}
             </button>
-            {isHost && room.phase === "lobby" && (
-              <button aria-label="Cancel room" className="sh-icon-button sh-cancel" onClick={() => act("game:cancel")} title="Cancel room" type="button">
+            {isHost && (
+              <button
+                aria-label="Cancel game"
+                className="sh-icon-button sh-cancel"
+                onClick={() => {
+                  if (window.confirm("Cancel this game for everyone?")) void act("game:cancel");
+                }}
+                title="Cancel game"
+                type="button"
+              >
                 <X size={16} />
               </button>
             )}
@@ -549,6 +564,19 @@ export default function SecretHitlerGame({ onBack, user }) {
         by Mike Boxleiter, Tommy Maranges, and Mac Schubert. Original art and interface; noncommercial.
         Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noreferrer" target="_blank">CC BY-NC-SA 4.0</a>.
       </footer>
+      <dialog aria-labelledby="secret-hitler-rules-title" className="game-rules-dialog sh-rules-dialog" ref={rulesDialogRef}>
+        <div className="game-rules-content">
+          <div className="game-rules-heading">
+            <div><span className="eyebrow">Secret Hitler guide</span><h2 id="secret-hitler-rules-title">How to play</h2></div>
+            <button aria-label="Close rules" className="turn-dialog-close" onClick={() => rulesDialogRef.current?.close()} type="button"><X size={18} /></button>
+          </div>
+          <section><h3>Teams and victory</h3><p>Liberals win by enacting 5 Liberal policies or executing Hitler. Fascists win by enacting 6 Fascist policies, or electing Hitler Chancellor after 3 Fascist policies.</p></section>
+          <section><h3>Election</h3><p>The President nominates an eligible Chancellor, then every living player votes Ja or Nein. A majority is required. The last elected Chancellor and, above five players, the last elected President are term-limited.</p></section>
+          <section><h3>Legislative session</h3><p>The President privately discards 1 of 3 policies, then the Chancellor enacts 1 of the remaining 2. Policy hands and role information are private; players may lie about them.</p></section>
+          <section><h3>Failed governments</h3><p>After 3 rejected governments, the top policy is enacted automatically. It grants no executive power and clears term limits.</p></section>
+          <section><h3>Executive powers and veto</h3><p>Fascist policies may grant investigation, special election, policy peek, or execution. After 5 Fascist policies, the Chancellor may request a veto; both Chancellor and President must agree.</p></section>
+        </div>
+      </dialog>
     </section>
   );
 }

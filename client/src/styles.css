@@ -99,6 +99,18 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .memory-heading h1 { margin: 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 2rem; }
 .back-button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 8px; background: #111827; color: #d9dfeb; }
 .back-button span { margin-right: 5px; }
+.rules-button, .sh-rules-button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 8px; background: #ffffff06; color: #cbd5e1; font-size: .76rem; }
+.rules-button { margin-left: auto; }
+.rules-button:hover, .sh-rules-button:hover { border-color: #a78bfa80; color: #c4b5fd; }
+.game-rules-dialog { width: min(580px, calc(100vw - 28px)); max-width: none; max-height: min(80dvh, 720px); overflow: hidden; padding: 0; border: 1px solid #a78bfa66; border-radius: 16px; background: #151b2b; color: #f8fafc; box-shadow: 0 28px 90px #000a; }
+.game-rules-dialog::backdrop { background: #050812c9; backdrop-filter: blur(4px); }
+.game-rules-content { display: grid; gap: 18px; max-height: min(80dvh, 720px); overflow-y: auto; padding: clamp(20px, 5vw, 30px); }
+.game-rules-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #ffffff18; }
+.game-rules-heading h2 { margin: 5px 0 0; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: 1.45rem; }
+.game-rules-content section { padding: 0 2px; }
+.game-rules-content section + section { padding-top: 16px; border-top: 1px solid #ffffff14; }
+.game-rules-content h3 { margin: 0 0 6px; color: #e9d5ff; font-size: .92rem; }
+.game-rules-content p { margin: 0; color: #cbd5e1; font-size: .88rem; line-height: 1.6; }
 .connection-state { display: inline-flex; align-items: center; gap: 8px; color: #fbbf24; font-size: .78rem; }
 .connection-state > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .connection-state.is-connected { color: #38bdf8; }
@@ -135,6 +147,8 @@ main { min-height: calc(100vh - 150px); display: grid; place-items: center; padd
 .cancel-game-button:disabled { cursor: wait; opacity: .55; }
 .copy-room-code { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; padding: 7px 10px; border: 1px solid var(--game-line, #ffffff20); border-radius: 8px; background: #ffffff06; color: #cbd5e1; font-size: .76rem; }
 .copy-room-code:hover { border-color: #a78bfa80; color: #c4b5fd; }
+.sound-toggle { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--game-line, #ffffff20); border-radius: 8px; background: #ffffff06; color: #cbd5e1; }
+.sound-toggle:hover { border-color: #a78bfa80; color: #c4b5fd; }
 .round-label { padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 999px; color: #cbd5e1; font-size: .76rem; }
 .table-toolbar-label { color: #eef2ff; font-family: "Space Grotesk", "DM Sans", sans-serif; font-size: .9rem; font-weight: 700; }
 .gift-shop-count { color: #9ba7bc; font-size: .78rem; }
@@ -385,6 +399,13 @@ footer { padding: 16px 0 28px; color: #77839b; font-size: .78rem; text-align: ce
 .sh-topbar { display: flex; align-items: center; justify-content: space-between; min-height: 38px; margin-bottom: 12px; }
 .sh-back, .sh-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--sh-line); border-radius: 6px; background: #ffffff08; color: var(--sh-paper); }
 .sh-back:hover, .sh-icon-button:hover { border-color: #d7ba7680; background: #d7ba7610; }
+.sh-rules-button { margin-left: auto; border-color: var(--sh-line); border-radius: 6px; color: var(--sh-paper); }
+.sh-rules-button:hover { border-color: #d7ba7680; background: #d7ba7610; color: var(--sh-paper); }
+.sh-rules-dialog { border-color: #d7ba7670; background: #202522; color: var(--sh-paper); }
+.sh-rules-dialog .game-rules-heading { border-color: var(--sh-line); }
+.sh-rules-dialog .game-rules-content section + section { border-color: var(--sh-line); }
+.sh-rules-dialog .game-rules-content h3 { color: var(--sh-gold); }
+.sh-rules-dialog .game-rules-content p { color: var(--sh-muted); }
 .sh-connection { display: inline-flex; align-items: center; gap: 7px; color: var(--sh-gold); font-size: .76rem; }
 .sh-connection.is-connected { color: var(--sh-green); }
 .sh-error { margin: 0 0 12px; padding: 10px 12px; border-left: 3px solid var(--sh-red); background: #e28a7012; color: #f4b09b; font-size: .86rem; }
